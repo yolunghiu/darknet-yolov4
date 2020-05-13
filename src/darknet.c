@@ -531,7 +531,7 @@ int main(int argc, char **argv)
 #ifndef GPU
     gpu_index = -1;
     printf(" GPU isn't used \n");
-    init_cpu();
+    init_cpu();  // do nothing
 #else   // GPU
     if(gpu_index >= 0){
         cuda_set_device(gpu_index);
@@ -563,7 +563,7 @@ int main(int argc, char **argv)
         run_super(argc, argv);
     } else if (0 == strcmp(argv[1], "detector"))
     {
-        run_detector(argc, argv);
+        run_detector(argc, argv);  // train test
     } else if (0 == strcmp(argv[1], "detect"))
     {
         float thresh = find_float_arg(argc, argv, "-thresh", .24);

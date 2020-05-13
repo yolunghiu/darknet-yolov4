@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "option_list.h"
 
+// 创建链表，并进行初始化
 list *make_list()
 {
     list* l = (list*)xmalloc(sizeof(list));

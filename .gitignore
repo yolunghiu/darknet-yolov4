@@ -55,5 +55,4 @@ include/darknet/
 uselib
 uselib_track
 darknet
-.idea/
 cmake-build-debug/

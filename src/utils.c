@@ -31,6 +31,7 @@
 #pragma warning(disable: 4996)
 #endif
 
+// 对malloc函数进行封装
 void *xmalloc(size_t size)
 {
     void *ptr = malloc(size);
@@ -41,6 +42,7 @@ void *xmalloc(size_t size)
     return ptr;
 }
 
+// 对calloc函数进行封装
 void *xcalloc(size_t nmemb, size_t size)
 {
     void *ptr = calloc(nmemb, size);
@@ -115,6 +117,7 @@ void shuffle(void *arr, size_t n, size_t size)
     free(swp);
 }
 
+// 根据
 void del_arg(int argc, char **argv, int index)
 {
     int i;
@@ -122,6 +125,7 @@ void del_arg(int argc, char **argv, int index)
     argv[i] = 0;
 }
 
+// 处理只有key没有value的参数
 int find_arg(int argc, char *argv[], char *arg)
 {
     int i;
@@ -406,6 +410,7 @@ list *split_str(char *s, char delim)
     return l;
 }
 
+// 删除字符串中的tab，回车，换行，空格
 void strip(char *s)
 {
     size_t i;
@@ -456,12 +461,13 @@ void free_ptrs(void **ptrs, int n)
     free(ptrs);
 }
 
+// 从文件指针中读取一行数据
 char *fgetl(FILE *fp)
 {
-    if (feof(fp)) return 0;
+    if (feof(fp)) return 0;  // todo: what is feof
     size_t size = 512;
     char *line = (char *) xmalloc(size * sizeof(char));
-    if (!fgets(line, size, fp))
+    if (!fgets(line, size, fp))  // todo: what is fgets
     {
         free(line);
         return 0;
