@@ -1703,9 +1703,9 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     list *options = read_data_cfg(datacfg);  // coco.data中的键值对构成的链表
     char *name_list = option_find_str(options, "names", "data/names.list");
     int names_size = 0;
-    char **names = get_labels_custom(name_list, &names_size); //get_labels(name_list);
+    char **names = get_labels_custom(name_list, &names_size);  // label names
 
-    image **alphabet = load_alphabet();
+    image **alphabet = load_alphabet();  // load all images in data/labels folder
     network net = parse_network_cfg_custom(cfgfile, 1, 1); // set batch=1
     if (weightfile)
     {
