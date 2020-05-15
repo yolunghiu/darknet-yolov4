@@ -643,19 +643,19 @@ struct layer {
 // network.h
 typedef enum {
     CONSTANT, STEP, EXP, POLY, STEPS, SIG, RANDOM, SGDR
-} learning_rate_policy;
+} learning_rate_policy; // 学习率调整策略
 
 // network.h
 typedef struct network {
-    int n;
-    int batch;
+    int n;  // 网络中layer的数量
+    int batch;  // batch size
     uint64_t *seen;
     int *cur_iteration;
     float loss_scale;
     int *t;
     float epoch;
     int subdivisions;
-    layer *layers;
+    layer *layers;  // 网络中所有的层
     float *output;
     learning_rate_policy policy;
     int benchmark_layers;
@@ -670,9 +670,9 @@ typedef struct network {
     float gamma;
     float scale;
     float power;
-    int time_steps;
+    int time_steps;     // used in rnn, ignore
     int step;
-    int max_batches;
+    int max_batches;    // 最多更新次数，完成max_batches次参数更新后停止训练
     int num_boxes;
     int train_images_num;
     float *seq_scales;

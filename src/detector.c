@@ -1705,8 +1705,9 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     int names_size = 0;
     char **names = get_labels_custom(name_list, &names_size);  // label names
 
-    image **alphabet = load_alphabet();  // load all images in data/labels folder
-    network net = parse_network_cfg_custom(cfgfile, 1, 1); // set batch=1
+    image **alphabet = load_alphabet();  // load all images in `data/labels` folder
+
+    network net = parse_network_cfg_custom(cfgfile, 1, 1); // set batch=1, parse yolov4.cfg
     if (weightfile)
     {
         load_weights(&net, weightfile);

@@ -239,10 +239,11 @@ char *get_layer_string(LAYER_TYPE a)
     return "none";
 }
 
+// 初始化network结构体对象
 network make_network(int n)
 {
     network net = {0};
-    net.n = n;
+    net.n = n;  // 网络中layer的数量
     net.layers = (layer*)xcalloc(net.n, sizeof(layer));
     net.seen = (uint64_t*)xcalloc(1, sizeof(uint64_t));
     net.cur_iteration = (int*)xcalloc(1, sizeof(int));
