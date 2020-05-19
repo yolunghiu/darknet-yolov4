@@ -169,6 +169,7 @@ local_layer parse_local(list *options, size_params params)
     return layer;
 }
 
+// 根据从配置文件中读取到的参数信息来创建卷积层
 convolutional_layer parse_convolutional(list *options, size_params params)
 {
     int n = option_find_int(options, "filters", 1);
@@ -1134,7 +1135,7 @@ learning_rate_policy get_policy(char *s)
     return CONSTANT;
 }
 
-// 根据配置文件，初始化网络参数
+// 根据配置文件[net]中的内容，初始化网络参数
 void parse_net_options(list *options, network *net)
 {
     net->max_batches = option_find_int(options, "max_batches", 0);
@@ -1331,6 +1332,7 @@ network parse_network_cfg(char *filename)
     return parse_network_cfg_custom(filename, 0, 0);
 }
 
+// 解析配置文件，创建网络
 network parse_network_cfg_custom(char *filename, int batch, int time_steps)
 {
     list *sections = read_cfg(filename);  // read yolov4.cfg (or something similar)
@@ -1358,7 +1360,7 @@ network parse_network_cfg_custom(char *filename, int batch, int time_steps)
     params.h = net.h;
     params.w = net.w;
     params.c = net.c;
-    params.inputs = net.inputs;
+    params.inputs = net.inputs;     // h*w*c
     if (batch > 0) net.batch = batch;
     if (time_steps > 0) net.time_steps = time_steps;
     if (net.batch < 1) net.batch = 1;
@@ -1382,7 +1384,8 @@ network parse_network_cfg_custom(char *filename, int batch, int time_steps)
 
     n = n->next;
     int count = 0;
-    free_section(s);
+    free_section(s);    // section [net]解析完毕，继续解析接下来的网络层
+
     fprintf(stderr, "   layer   filters  size/strd(dil)      input                output\n");
     while (n)
     {
@@ -2176,6 +2179,7 @@ void load_shortcut_weights(layer l, FILE *fp)
 #endif
 }
 
+// 从文件中加载模型参数，可以设置cutoff，只加载 0~cutoff-1 层的参数
 void load_weights_upto(network *net, char *filename, int cutoff)
 {
 #ifdef GPU
@@ -2300,6 +2304,7 @@ void load_weights_upto(network *net, char *filename, int cutoff)
     fclose(fp);
 }
 
+// 从文件中加载模型参数
 void load_weights(network *net, char *filename)
 {
     load_weights_upto(net, filename, net->n);

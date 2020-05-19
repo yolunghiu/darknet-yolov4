@@ -1702,20 +1702,19 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
 {
     list *options = read_data_cfg(datacfg);  // coco.data中的键值对构成的链表
     char *name_list = option_find_str(options, "names", "data/names.list");
-    int names_size = 0;
+    int names_size = 0;     // number classes
     char **names = get_labels_custom(name_list, &names_size);  // label names
-
     image **alphabet = load_alphabet();  // load all images in `data/labels` folder
 
-    network net = parse_network_cfg_custom(cfgfile, 1, 1); // set batch=1, parse yolov4.cfg
-    if (weightfile)
+    network net = parse_network_cfg_custom(cfgfile, 1, 1); // set batch=1 解析配置文件(yolov4.cfg)，创建网络
+    if (weightfile)  // ./yolov4.weights
     {
         load_weights(&net, weightfile);
     }
     net.benchmark_layers = benchmark_layers;
-    fuse_conv_batchnorm(net);
-    calculate_binary_weights(net);
-    if (net.layers[net.n - 1].classes != names_size)
+    fuse_conv_batchnorm(net);   // 融合conv bn
+    calculate_binary_weights(net);  // xnor
+    if (net.layers[net.n - 1].classes != names_size)    // 确保网络类别数正确
     {
         printf("\n Error: in the file %s number of names %d that isn't equal to classes=%d in the file %s \n",
                name_list, names_size, net.layers[net.n - 1].classes, cfgfile);
@@ -1741,47 +1740,42 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     float nms = .45;    // 0.4F
     while (1)
     {
-        if (filename)
+        if (filename)   // image path
         {
             strncpy(input, filename, 256);
             if (strlen(input) > 0)
                 if (input[strlen(input) - 1] == 0x0d) input[strlen(input) - 1] = 0;
-        } else
+        } else  // 未指定 image path，从命令行读取
         {
             printf("Enter Image Path: ");
             fflush(stdout);
             input = fgets(input, 256, stdin);
             if (!input) break;
-            strtok(input, "\n");
+            strtok(input, "\n");    // strtok处理后的字符串会变成分割后的第一个子串
         }
-        //image im;
-        //image sized = load_image_resize(input, net.w, net.h, net.c, &im);
         image im = load_image(input, 0, 0, net.c);
         image sized;
         if (letter_box) sized = letterbox_image(im, net.w, net.h);
         else sized = resize_image(im, net.w, net.h);
         layer l = net.layers[net.n - 1];
 
-        //box *boxes = calloc(l.w*l.h*l.n, sizeof(box));
-        //float **probs = calloc(l.w*l.h*l.n, sizeof(float*));
-        //for(j = 0; j < l.w*l.h*l.n; ++j) probs[j] = (float*)xcalloc(l.classes, sizeof(float));
-
         float *X = sized.data;
 
-        //time= what_time_is_it_now();
         double time = get_time_point();
-        network_predict(net, X);
-        //network_predict_image(&net, im); letterbox = 1;
+        network_predict(net, X);    // forward pass
         printf("%s: Predicted in %lf milli-seconds.\n", input, ((double) get_time_point() - time) / 1000);
-        //printf("%s: Predicted in %f seconds.\n", input, (what_time_is_it_now()-time));
 
+        // 获取所有检测框
         int nboxes = 0;
         detection *dets = get_network_boxes(&net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes, letter_box);
+
+        // nms
         if (nms)
         {
             if (l.nms_kind == DEFAULT_NMS) do_nms_sort(dets, nboxes, l.classes, nms);
             else diounms_sort(dets, nboxes, l.classes, nms, l.nms_kind, l.beta_nms);
         }
+
         draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, ext_output);
         save_image(im, "predictions");
         if (!dont_show)
@@ -1808,7 +1802,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         if (save_labels)
         {
             char labelpath[4096];
-            replace_image_to_label(input, labelpath);
+            replace_image_to_label(input, labelpath);  // input is image path
 
             FILE *fw = fopen(labelpath, "wb");
             int i;

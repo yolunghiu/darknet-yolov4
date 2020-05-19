@@ -351,6 +351,7 @@ int compare_by_probs(const void *a_ptr, const void *b_ptr)
     return delta < 0 ? -1 : delta > 0 ? 1 : 0;
 }
 
+// 在图片中可视化检测结果
 void draw_detections_v3(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes,
                         int ext_output)
 {
@@ -822,6 +823,7 @@ void save_image_options(image im, const char *name, IMTYPE f, int quality)
     if (!success) fprintf(stderr, "Failed to write image %s\n", buff);
 }
 
+// 保存图片
 void save_image(image im, const char *name)
 {
     save_image_options(im, name, JPG, 80);
@@ -1084,6 +1086,7 @@ void letterbox_image_into(image im, int w, int h, image boxed)
     free_image(resized);
 }
 
+// to keep the ratio of w/h, so that the object would not deform
 image letterbox_image(image im, int w, int h)
 {
     int new_w = im.w;
