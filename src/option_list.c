@@ -5,9 +5,9 @@
 #include "utils.h"
 #include "data.h"
 
+// 读取配置文件（如coco.data）到链表中
 list *read_data_cfg(char *filename)
 {
-    // cfg/coco.data
     FILE *file = fopen(filename, "r");
     if (file == 0) file_error(filename);
     char *line;

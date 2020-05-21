@@ -312,7 +312,7 @@ struct layer
     int stretch;
     int stretch_sway;
     float angle;
-    float jitter;
+    float jitter;   // randomly changes size of image and its aspect ratio from x(1 - 2*jitter) to x(1 + 2*jitter)
     float saturation;
     float exposure;
     float shift;
@@ -695,7 +695,7 @@ typedef struct network
 {
     int n;  // 网络中layer的数量
     int batch;  // batch size
-    uint64_t *seen;
+    uint64_t *seen; // 目前已经读入的图片张数（网络已经处理的图片张数）
     int *cur_iteration;
     float loss_scale;
     int *t;

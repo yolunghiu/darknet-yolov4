@@ -1327,6 +1327,7 @@ void set_train_only_bn(network net)
     }
 }
 
+// 对parse_network_cfg_custom简单封装
 network parse_network_cfg(char *filename)
 {
     return parse_network_cfg_custom(filename, 0, 0);

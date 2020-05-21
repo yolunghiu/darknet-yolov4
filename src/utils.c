@@ -193,20 +193,21 @@ char *find_char_arg(int argc, char **argv, char *arg, char *def)
     return def;
 }
 
-
+// 将"xxx/xxx/yolov4-voc.cfg"变成"yolov4-voc"
 char *basecfg(char *cfgfile)
 {
     char *c = cfgfile;
     char *next;
-    while ((next = strchr(c, '/')))
+    while ((next = strchr(c, '/')))  // linux
     {
         c = next + 1;
     }
-    if (!next)
+    if (!next)  // windows
         while ((next = strchr(c, '\\')))
         { c = next + 1; }
-    c = copy_string(c);
-    next = strchr(c, '.');
+
+    c = copy_string(c);     // c是局部变量，为其分配内存，使其在函数执行后不会失效
+    next = strchr(c, '.');  // next和c操作同一段内存
     if (next) *next = 0;
     return c;
 }
@@ -556,7 +557,7 @@ void write_all(int fd, char *buffer, size_t bytes)
     }
 }
 
-
+// 对传入的字符串进行复制，开辟一块新的内存
 char *copy_string(char *s)
 {
     if (!s)

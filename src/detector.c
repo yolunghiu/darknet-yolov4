@@ -31,9 +31,9 @@ static int coco_ids[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 
 void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, int ngpus, int clear, int dont_show,
                     int calc_map, int mjpeg_port, int show_imgs, int benchmark_layers, char *chart_path)
 {
-    list *options = read_data_cfg(datacfg);
-    char *train_images = option_find_str(options, "train", "data/train.txt");
-    char *valid_images = option_find_str(options, "valid", train_images);
+    list *options = read_data_cfg(datacfg);     // read voc.data
+    char *train_images = option_find_str(options, "train", "data/train.txt");  // train.txt
+    char *valid_images = option_find_str(options, "valid", train_images);   // 2007_test_test.txt
     char *backup_directory = option_find_str(options, "backup", "/backup/");
 
     network net_map;
@@ -50,7 +50,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 
         cuda_set_device(gpus[0]);
         printf(" Prepare additional network for mAP calculation...\n");
-        net_map = parse_network_cfg_custom(cfgfile, 1, 1);
+        net_map = parse_network_cfg_custom(cfgfile, 1, 1);  // yolov4.cfg
         net_map.benchmark_layers = benchmark_layers;
         const int net_classes = net_map.layers[net_map.n - 1].classes;
 
@@ -59,7 +59,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 
         char *name_list = option_find_str(options, "names", "data/names.list");
         int names_size = 0;
-        char **names = get_labels_custom(name_list, &names_size);
+        char **names = get_labels_custom(name_list, &names_size);   // label names
         if (net_classes != names_size)
         {
             printf("\n Error: in the file %s number of names %d that isn't equal to classes=%d in the file %s \n",
@@ -71,14 +71,14 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 
     srand(time(0));
     char *base = basecfg(cfgfile);
-    printf("%s\n", base);
+    printf("%s\n", base);   // yolov4-voc
     float avg_loss = -1;
     network *nets = (network *) xcalloc(ngpus, sizeof(network));
 
     srand(time(0));
     int seed = rand();
     int k;
-    for (k = 0; k < ngpus; ++k)
+    for (k = 0; k < ngpus; ++k)     // todo: 每块GPU都放个网络上去？
     {
         srand(seed);
 #ifdef GPU
@@ -2105,7 +2105,7 @@ void run_detector(int argc, char **argv)
 
     int clear = find_arg(argc, argv, "-clear");
 
-    char *datacfg = argv[3];                   // ./cfg/coco.datas
+    char *datacfg = argv[3];                   // ./cfg/voc.data
     char *cfg = argv[4];                       // ./cfg/yolov4.cfg
     char *weights = (argc > 5) ? argv[5] : 0;  // ./yolov4.weights
     if (weights)
