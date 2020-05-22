@@ -1901,6 +1901,7 @@ void save_connected_weights(layer l, FILE *fp)
     }
 }
 
+// 保存模型, 从0~cufoff-1层
 void save_weights_upto(network net, char *filename, int cutoff)
 {
 #ifdef GPU
@@ -2007,6 +2008,7 @@ void save_weights_upto(network net, char *filename, int cutoff)
     fclose(fp);
 }
 
+// 保存模型
 void save_weights(network net, char *filename)
 {
     save_weights_upto(net, filename, net.n);

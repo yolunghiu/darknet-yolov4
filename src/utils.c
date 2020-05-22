@@ -363,6 +363,7 @@ void top_k(float *a, int n, int k, int *index)
     }
 }
 
+// 打印出错信息，终止程序
 void error(const char *s)
 {
     perror(s);
@@ -913,9 +914,8 @@ float rand_uniform(float min, float max)
 #else
     return ((float)rand() / RAND_MAX * (max - min)) + min;
 #endif
-    //return (random_float() * (max - min)) + min;
 }
-
+// x = rand(1, s) --> x = x | 1/x
 float rand_scale(float s)
 {
     float scale = rand_uniform_strong(1, s);
@@ -971,6 +971,7 @@ int rand_int_fast(int min, int max)
     return r;
 }
 
+// 生成随机整数
 unsigned int random_gen()
 {
     unsigned int rnd = 0;
@@ -985,6 +986,7 @@ unsigned int random_gen()
     return rnd;
 }
 
+// 生成随机浮点数
 float random_float()
 {
     unsigned int rnd = 0;
@@ -1003,6 +1005,7 @@ float random_float()
 #endif  // WIN32
 }
 
+// 生成min~max之间的随机数，min>max也能正常工作
 float rand_uniform_strong(float min, float max)
 {
     if (max < min)

@@ -57,6 +57,7 @@ load_args get_base_args(network *net)
     return args;
 }
 
+// 返回当前网络迭代次数
 int64_t get_current_iteration(network net)
 {
     return *net.cur_iteration;

@@ -1665,6 +1665,7 @@ void free_load_threads(void *ptr)
     }
 }
 
+// 创建加载数据的线程
 pthread_t load_data(load_args args)
 {
     pthread_t thread;

@@ -120,16 +120,16 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     int classes = l.classes;
     float jitter = l.jitter;
 
-    list *plist = get_paths(train_images);
+    list *plist = get_paths(train_images);  // 获取所有用于训练的图片路径组成的链表
     int train_images_num = plist->size;
-    char **paths = (char **) list_to_array(plist);
+    char **paths = (char **) list_to_array(plist);  // 所有图片路径组成的数组
 
     const int init_w = net.w;
     const int init_h = net.h;
     const int init_b = net.batch;
     int iter_save, iter_save_last, iter_map;
-    iter_save = get_current_iteration(net);
-    iter_save_last = get_current_iteration(net);
+    iter_save = get_current_iteration(net);         // *net.cur_iteration
+    iter_save_last = get_current_iteration(net);    // 这三个参数初始值一样
     iter_map = get_current_iteration(net);
     float mean_average_precision = -1;
     float best_map = mean_average_precision;
@@ -165,13 +165,14 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 #ifdef OPENCV
     args.threads = 6 * ngpus;   // 3 for - Amazon EC2 Tesla V100: p3.2xlarge (8 logical cores) - p3.16xlarge
     //args.threads = 12 * ngpus;    // Ryzen 7 2700X (16 logical cores)
-    mat_cv* img = NULL;
+    mat_cv *img = NULL;
     float max_img_loss = 5;
     int number_of_lines = 100;
     int img_size = 1000;
     char windows_name[100];
     sprintf(windows_name, "chart_%s.png", base);
-    img = draw_train_chart(windows_name, max_img_loss, net.max_batches, number_of_lines, img_size, dont_show, chart_path);
+    img = draw_train_chart(windows_name, max_img_loss, net.max_batches, number_of_lines, img_size, dont_show,
+                           chart_path);
 #endif    //OPENCV
     if (net.track)
     {
@@ -185,12 +186,11 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     }
     //printf(" imgs = %d \n", imgs);
 
-    pthread_t load_thread = load_data(args);
+    pthread_t load_thread = load_data(args);    // 创建用于加载数据的线程
 
     int count = 0;
     double time_remaining, avg_time = -1, alpha_time = 0.01;
 
-    //while(i*imgs < N*120){
     while (get_current_iteration(net) < net.max_batches)
     {
         if (l.random && count++ % 10 == 0)
@@ -391,7 +391,8 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         if (avg_time < 0) avg_time = time_remaining;
         else avg_time = alpha_time * time_remaining + (1 - alpha_time) * avg_time;
 #ifdef OPENCV
-        draw_train_loss(windows_name, img, img_size, avg_loss, max_img_loss, iteration, net.max_batches, mean_average_precision, draw_precision, "mAP%", dont_show, mjpeg_port, avg_time);
+        draw_train_loss(windows_name, img, img_size, avg_loss, max_img_loss, iteration, net.max_batches,
+                        mean_average_precision, draw_precision, "mAP%", dont_show, mjpeg_port, avg_time);
 #endif    // OPENCV
 
         //if (i % 1000 == 0 || (i < 1000 && i % 100 == 0)) {
@@ -418,7 +419,8 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             save_weights(net, buff);
         }
         free_data(train);
-    }
+    }   // end while
+
 #ifdef GPU
     if (ngpus != 1) sync_nets(nets, ngpus, 0);
 #endif
@@ -447,7 +449,6 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 
     for (k = 0; k < ngpus; ++k) free_network(nets[k]);
     free(nets);
-    //free_network(net);
 
     if (calc_map)
     {

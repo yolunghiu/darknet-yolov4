@@ -935,10 +935,10 @@ typedef enum
 typedef struct load_args
 {
     int threads;
-    char **paths;
+    char **paths;   // 所有图片路径，从txt文件中读出
     char *path;
-    int n;
-    int m;
+    int n;          // 每次迭代使用的图片数量
+    int m;          // 所有图片数量
     char **labels;
     int h;
     int w;
@@ -949,7 +949,7 @@ typedef struct load_args
     int nw;
     int num_boxes;
     int min, max, size;
-    int classes;
+    int classes;    // 类别数
     int background;
     int scale;
     int center;
