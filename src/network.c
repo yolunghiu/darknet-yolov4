@@ -529,6 +529,7 @@ void set_batch_network(network *net, int b)
     recalculate_workspace_size(net); // recalculate workspace size
 }
 
+// 调整网络输入尺寸，相应改变各层尺寸
 int resize_network(network *net, int w, int h)
 {
 #ifdef GPU

@@ -356,7 +356,7 @@ struct layer
     float mask_scale;
     float class_scale;
     int bias_match;
-    float random;
+    float random;   // 随机调整训练网络大小，从 320x320 ~ 608x608
     float ignore_thresh;
     float truth_thresh;
     float iou_thresh;
@@ -696,7 +696,7 @@ typedef struct network
     int n;  // 网络中layer的数量
     int batch;  // batch size
     uint64_t *seen; // 目前已经读入的图片张数（网络已经处理的图片张数）
-    int *cur_iteration;
+    int *cur_iteration; // todo: 为啥用指针而不直接用int变量？
     float loss_scale;
     int *t;
     float epoch;
@@ -748,7 +748,7 @@ typedef struct network
     int blur;
     int mixup;
     float label_smooth_eps;
-    int resize_step;
+    int resize_step;  // default: 32
     int attention;
     int adversarial;
     float adversarial_lr;
@@ -801,7 +801,7 @@ typedef struct network
     size_t max_delta_gpu_size;
 //#endif  // GPU
     int optimized_memory;
-    int dynamic_minibatch;
+    int dynamic_minibatch;  // 默认为0
     size_t workspace_size_limit;
 } network;
 

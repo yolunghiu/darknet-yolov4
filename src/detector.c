@@ -115,7 +115,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     printf("Learning Rate: %g, Momentum: %g, Decay: %g\n", net.learning_rate, net.momentum, net.decay);
     data train, buffer;
 
-    layer l = net.layers[net.n - 1];
+    layer l = net.layers[net.n - 1];    // 网络最后一层
 
     int classes = l.classes;
     float jitter = l.jitter;
@@ -199,22 +199,27 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             if (l.random != 1.0) rand_coef = l.random;
             printf("Resizing, random_coef = %.2f \n", rand_coef);
             float random_val = rand_scale(rand_coef);    // *x or /x
+            // 输入图片的尺寸, 要能被resize_step(32)整除
             int dim_w = roundl(random_val * init_w / net.resize_step + 1) * net.resize_step;
             int dim_h = roundl(random_val * init_h / net.resize_step + 1) * net.resize_step;
             if (random_val < 1 && (dim_w > init_w || dim_h > init_h)) dim_w = init_w, dim_h = init_h;
 
+            // 输入图片的最大尺寸
             int max_dim_w = roundl(rand_coef * init_w / net.resize_step + 1) * net.resize_step;
             int max_dim_h = roundl(rand_coef * init_h / net.resize_step + 1) * net.resize_step;
 
             // at the beginning (check if enough memory) and at the end (calc rolling mean/variance)
+            // 初始阶段检查内存是否足够，结束阶段计算滑动均值/方差
             if (avg_loss < 0 || get_current_iteration(net) > net.max_batches - 100)
             {
                 dim_w = max_dim_w;
                 dim_h = max_dim_h;
             }
 
+            // 如果尺寸小于resize_step，将其置为resize_step
             if (dim_w < net.resize_step) dim_w = net.resize_step;
             if (dim_h < net.resize_step) dim_h = net.resize_step;
+
             int dim_b = (init_b * max_dim_w * max_dim_h) / (dim_w * dim_h);
             int new_dim_b = (int) (dim_b * 0.8);
             if (new_dim_b > init_b) dim_b = new_dim_b;
@@ -252,6 +257,8 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             }
             net = nets[0];
         }
+
+        // <start load data>
         double time = what_time_is_it_now();
         pthread_join(load_thread, 0);
         train = buffer;
@@ -285,7 +292,9 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         printf("Loaded: %lf seconds", load_time);
         if (load_time > 0.1 && avg_loss > 0) printf(" - performance bottleneck on CPU or Disk HDD/SSD");
         printf("\n");
+        // <end load data/>
 
+        // <进行一个batch的训练>
         time = what_time_is_it_now();
         float loss = 0;
 #ifdef GPU
@@ -304,7 +313,9 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 
         const int iteration = get_current_iteration(net);
         //i = get_current_batch(net);
+        // <一个batch的训练结束/>
 
+        // <开始计算map>
         int calc_map_for_each =
                 4 * train_images_num / (net.batch * net.subdivisions);  // calculate mAP for each 4 Epochs
         calc_map_for_each = fmax(calc_map_for_each, 100);
@@ -386,6 +397,8 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 
             draw_precision = 1;
         }
+        // <计算map结束/>
+
         time_remaining = (net.max_batches - iteration) * (what_time_is_it_now() - time + load_time) / 60 / 60;
         // set initial value, even if resume training from 10000 iteration
         if (avg_time < 0) avg_time = time_remaining;
@@ -395,8 +408,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
                         mean_average_precision, draw_precision, "mAP%", dont_show, mjpeg_port, avg_time);
 #endif    // OPENCV
 
-        //if (i % 1000 == 0 || (i < 1000 && i % 100 == 0)) {
-        //if (i % 100 == 0) {
+        // <保存模型参数，本次训练结束>
         if (iteration >= (iter_save + 1000) || iteration % 1000 == 0)
         {
             iter_save = iteration;
@@ -419,6 +431,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             save_weights(net, buff);
         }
         free_data(train);
+        // <保存模型参数，本次训练结束/>
     }   // end while
 
 #ifdef GPU
