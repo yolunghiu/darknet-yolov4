@@ -31,6 +31,21 @@ static int coco_ids[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 
 void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, int ngpus, int clear, int dont_show,
                     int calc_map, int mjpeg_port, int show_imgs, int benchmark_layers, char *chart_path)
 {
+    /*
+     * datacfg: voc.data
+     * cfgfile: yolov4.cfg
+     * weightfile: yolov4.weights
+     * gpus: 指定的所用gpu id
+     * ngpus: 所用gpu数量
+     * clear: cli中指定的int参数，默认为0
+     * dont_show: cli中指定的int参数，受benchmark参数影响
+     * calc_map: cli中指定的int参数(-map)
+     * mjpeg_port: cli中指定的int参数，默认为-1
+     * show_imgs: cli中指定的int参数
+     * benchmark_layers: cli中指定的int参数
+     * chart_path: cli中指定的int参数
+     * */
+
     list *options = read_data_cfg(datacfg);     // read voc.data
     char *train_images = option_find_str(options, "train", "data/train.txt");  // train.txt
     char *valid_images = option_find_str(options, "valid", train_images);   // 2007_test_test.txt
