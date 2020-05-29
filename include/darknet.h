@@ -704,7 +704,7 @@ typedef struct network
     layer *layers;  // 网络中所有的层
     float *output;
     learning_rate_policy policy;
-    int benchmark_layers;
+    int benchmark_layers;  // 评估模型的表现
 
     float learning_rate;
     float learning_rate_min;

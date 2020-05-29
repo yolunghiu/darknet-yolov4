@@ -51,10 +51,10 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     char *valid_images = option_find_str(options, "valid", train_images);   // 2007_test_test.txt
     char *backup_directory = option_find_str(options, "backup", "/backup/");
 
-    network net_map;
+    network net_map;  // 用于计算map的网络结构
     if (calc_map)
     {
-        FILE *valid_file = fopen(valid_images, "r");
+        FILE *valid_file = fopen(valid_images, "r");  // 将2007_test_test.txt中的图片用于
         if (!valid_file)
         {
             printf("\n Error: There is no %s file for mAP calculation!\n Don't use -map flag.\n Or set valid=%s in your %s file. \n",
@@ -69,7 +69,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         net_map.benchmark_layers = benchmark_layers;
         const int net_classes = net_map.layers[net_map.n - 1].classes;
 
-        int k;  // free memory unnecessary arrays
+        int k;  // free memory unnecessary arrays，这些结构不会影响map的计算(推理过程)
         for (k = 0; k < net_map.n - 1; ++k) free_layer_custom(net_map.layers[k], 1);
 
         char *name_list = option_find_str(options, "names", "data/names.list");
@@ -81,10 +81,11 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
                    name_list, names_size, net_classes, cfgfile);
             if (net_classes > names_size) getchar();
         }
+        // 检查一下模型类别数和names中的类别数是否一致，检查完后释放内存
         free_ptrs((void **) names, net_map.layers[net_map.n - 1].classes);
     }
 
-    srand(time(0));
+    srand(time(0));  // 随机数发生器的初始化函数
     char *base = basecfg(cfgfile);
     printf("%s\n", base);   // yolov4-voc
     float avg_loss = -1;
