@@ -493,6 +493,7 @@ layer parse_yolo(list *options, size_params params)
     char *map_file = option_find_str(options, "map", 0);
     if (map_file) l.map = read_map(map_file);
 
+    // 配置文件中预定义的9种不同宽高的anchor
     a = option_find_str(options, "anchors", 0);
     if (a)
     {
@@ -1436,8 +1437,8 @@ network parse_network_cfg_custom(char *filename, int batch, int time_steps)
             l.keep_delta_gpu = 1;
         } else if (lt == YOLO)
         {
-            l = parse_yolo(options, params);
             l.keep_delta_gpu = 1;
+            l = parse_yolo(options, params);
         } else if (lt == GAUSSIAN_YOLO)
         {
             l = parse_gaussian_yolo(options, params);

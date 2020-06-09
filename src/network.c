@@ -382,7 +382,7 @@ float train_network_datum(network net, float *x, float *y)
     forward_network(net, state);
     backward_network(net, state);
     float error = get_network_cost(net);
-    //if(((*net.seen)/net.batch)%net.subdivisions == 0) update_network(net);
+
     return error;
 }
 
@@ -406,6 +406,7 @@ float train_network_sgd(network net, data d, int n)
     return (float) sum / (n * batch);
 }
 
+// 网络训练，train_network_waitkey()简单封装
 float train_network(network net, data d)
 {
     return train_network_waitkey(net, d, 0);
