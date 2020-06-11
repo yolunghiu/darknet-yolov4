@@ -110,7 +110,7 @@ typedef struct tree
 // activations.h
 typedef enum
 {
-    LOGISTIC,
+    LOGISTIC,   // sigmoid
     RELU,
     RELU6,
     RELIE,

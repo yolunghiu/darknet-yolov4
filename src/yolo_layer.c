@@ -140,12 +140,16 @@ void resize_yolo_layer(layer *l, int w, int h)
 #endif
 }
 
-// 私有函数，只在本文件中调用
+// 私有函数，只在本文件中调用，根据预测信息解码所预测的box(解码成x,y,w,h)
 box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride)
 {
-    /* biases: 先验框的宽和高
-     * i,j: cell的位置（相当于公式中的cx,cy）
-     *
+    /* x:       yolo_layer的输出，即l.output，包含所有batch预测得到的矩形框信息
+     * biases:  先验框的宽和高
+     * index:   矩形框的首地址（索引，矩形框中存储的首个参数x在l.output中的索引）
+     * i,j:     cell的位置（相当于公式中的cx,cy）
+     * lw,lh:   特征图的宽度、高度
+     * w,h:     输入图像的宽度、高度
+     * stride:  当前特征图相对于原图降采样的倍数?
      * */
 
     box b;
@@ -161,12 +165,14 @@ box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw
     return b;
 }
 
+// 将nan或inf值置为0
 static inline float fix_nan_inf(float val)
 {
     if (isnan(val) || isinf(val)) val = 0;
     return val;
 }
 
+// 对val值进行裁剪
 static inline float clip_value(float val, const float max_val)
 {
     if (val > max_val)
@@ -181,6 +187,7 @@ static inline float clip_value(float val, const float max_val)
     return val;
 }
 
+// 计算预测的box的loss
 ious delta_yolo_box(box truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h,
                     float *delta, float scale, int stride, float iou_normalizer, IOU_LOSS iou_loss, int accumulate,
                     float max_delta)
@@ -188,33 +195,36 @@ ious delta_yolo_box(box truth, float *x, float *biases, int n, int index, int i,
     ious all_ious = {0};
     // i - step in layer width
     // j - step in layer height
-    //  Returns a box in absolute coordinates
+    // Returns a box in absolute coordinates
+
+    // 获得第j*w+i个cell的第n个bbox在当前特征图的[x,y,w,h]
     box pred = get_yolo_box(x, biases, n, index, i, j, lw, lh, w, h, stride);
+
     all_ious.iou = box_iou(pred, truth);
     all_ious.giou = box_giou(pred, truth);
     all_ious.diou = box_diou(pred, truth);
     all_ious.ciou = box_ciou(pred, truth);
+
     // avoid nan in dx_box_iou
-    if (pred.w == 0)
-    { pred.w = 1.0; }
-    if (pred.h == 0)
-    { pred.h = 1.0; }
+    if (pred.w == 0) pred.w = 1.0;
+    if (pred.h == 0) pred.h = 1.0;
     if (iou_loss == MSE)    // old loss
     {
         float tx = (truth.x * lw - i);
         float ty = (truth.y * lh - j);
-        float tw = log(truth.w * w / biases[2 * n]);
+        float tw = log(truth.w * w / biases[2 * n]);  // log 使大框和小框的误差影响接近
         float th = log(truth.h * h / biases[2 * n + 1]);
 
         //printf(" tx = %f, ty = %f, tw = %f, th = %f \n", tx, ty, tw, th);
         //printf(" x = %f, y = %f, w = %f, h = %f \n", x[index + 0 * stride], x[index + 1 * stride], x[index + 2 * stride], x[index + 3 * stride]);
 
         // accumulate delta
+        // 计算tx, ty, tw, th的梯度
         delta[index + 0 * stride] += scale * (tx - x[index + 0 * stride]) * iou_normalizer;
         delta[index + 1 * stride] += scale * (ty - x[index + 1 * stride]) * iou_normalizer;
         delta[index + 2 * stride] += scale * (tw - x[index + 2 * stride]) * iou_normalizer;
         delta[index + 3 * stride] += scale * (th - x[index + 3 * stride]) * iou_normalizer;
-    } else
+    } else  // iou loss
     {
         // https://github.com/generalized-iou/g-darknet
         // https://arxiv.org/abs/1902.09630v2
@@ -295,6 +305,7 @@ void averages_yolo_deltas(int class_index, int box_index, int stride, int classe
     }
 }
 
+// 计算分类loss
 void delta_yolo_class(float *output, float *delta, int index, int class_id, int classes, int stride, float *avg_cat,
                       int focal_loss, float label_smooth_eps, float *classes_multipliers)
 {
@@ -311,10 +322,10 @@ void delta_yolo_class(float *output, float *delta, int index, int class_id, int 
         if (avg_cat) *avg_cat += output[index + stride * class_id];
         return;
     }
+
     // Focal loss
     if (focal_loss)
     {
-        // Focal Loss
         float alpha = 0.5;    // 0.25 or 0.5
         //float gamma = 2;    // hardcoded in many places of the grad-formula
 
@@ -349,6 +360,7 @@ void delta_yolo_class(float *output, float *delta, int index, int class_id, int 
     }
 }
 
+// 遍历所有类别置信度，若某个类别的置信度超过0.25，返回1
 int compare_yolo_class(float *output, int classes, int class_index, int stride, float objectness, int class_id,
                        float conf_thresh)
 {
@@ -365,8 +377,60 @@ int compare_yolo_class(float *output, int classes, int class_index, int stride, 
     return 0;
 }
 
+// 计算某个矩形框中某个参数在l.output中的索引
 static int entry_index(layer l, int batch, int location, int entry)
 {
+    /**
+     * @brief 计算某个矩形框中某个参数在l.output中的索引。一个矩形框包含了x,y,w,h,c,C1,C2...,Cn信息，
+     *        本函数负责获取该矩形框首个定位信息(x值)在l.output中索引、获取该矩形框置信度信息c
+     *        在l.output中的索引、获取该矩形框分类所属概率的首个概率也即C1值的索引，具体是获取矩形框哪个参数的索引，
+     *        取决于输入参数entry的值，这些在forward_region_layer()函数中都有用到，由于l.output的存储方式，
+     *        当entry=0时，就是获取矩形框x参数在l.output中的索引；当entry=4时，就是获取矩形框置信度信息c在
+     *        l.output中的索引；当entry=5时，就是获取矩形框首个所属概率C1在l.output中的索引
+     * @param l 当前region_layer
+     * @param batch 当前照片是整个batch中的第几张，因为l.output中包含整个batch的输出，所以要定位某张训练图片
+     *              输出的众多网格中的某个矩形框，当然需要该参数.
+     * @param location 这个参数，说实话，感觉像个鸡肋参数，函数中用这个参数获取n和loc的值，这个n就是表示网格中
+     *                 的第几个预测矩形框（比如每个网格预测5个矩形框，那么n取值范围就是从0~4，loc就是某个
+     *                 通道上的元素偏移（region_layer输出的通道数为l.out_c = (classes + coords + 1)，
+     *                 这样说可能没有说明白，这都与l.output的存储结构相关，见下面详细注释以及其他说明。总之，
+     *                 查看一下调用本函数的父函数forward_region_layer()就知道了，可以直接输入n和j*l.w+i的，
+     *                 没有必要输入location，这样还得重新计算一次n和loc.
+     * @param entry 切入点偏移系数，关于这个参数，就又要扯到l.output的存储结构了，见下面详细注释以及其他说明.
+     * @details l.output这个参数的存储内容以及存储方式已经在多个地方说明了，再多的文字都不及图文说明，此处再
+     *          简要罗嗦几句，更为具体的参考图文说明。l.output中存储了整个batch的训练输出，每张训练图片都会输出
+     *          l.out_w*l.out_h个网格，每个网格会预测l.n个矩形框，每个矩形框含有l.classes+l.coords+1个参数，
+     *          而最后一层的输出通道数为l.n*(l.classes+l.coords+1)，可以想象下最终输出的三维张量是个什么样子的。
+     *          展成一维数组存储时，l.output可以首先分成batch个大段，每个大段存储了一张训练图片的所有输出；进一步细分，
+     *          取其中第一大段分析，该大段中存储了第一张训练图片所有输出网格预测的矩形框信息，每个网格预测了l.n个矩形框，
+     *          存储时，l.n个矩形框是分开存储的，也就是先存储所有网格中的第一个矩形框，而后存储所有网格中的第二个矩形框，
+     *          依次类推，如果每个网格中预测5个矩形框，则可以继续把这一大段分成5个中段。继续细分，5个中段中取第
+     *          一个中段来分析，这个中段中按行（有l.out_w*l.out_h个网格，按行存储）依次存储了这张训练图片所有输出网格中
+     *          的第一个矩形框信息，要注意的是，这个中段存储的顺序并不是挨个挨个存储每个矩形框的所有信息，
+     *          而是先存储所有矩形框的x，而后是所有的y,然后是所有的w,再是h，c，最后的的概率数组也是拆分进行存储，
+     *          并不是一下子存储完一个矩形框所有类的概率，而是先存储所有网格所属第一类的概率，再存储所属第二类的概率，
+     *          具体来说这一中段首先存储了l.out_w*l.out_h个x，然后是l.out_w*l.out_c个y，依次下去，
+     *          最后是l.out_w*l.out_h个C1（属于第一类的概率，用C1表示，下面类似），l.out_w*l.outh个C2,...,
+     *          l.out_w*l.out_c*Cn（假设共有n类），所以可以继续将中段分成几个小段，依次为x,y,w,h,c,C1,C2,...Cn
+     *          小段，每小段的长度都为l.out_w*l.out_c.
+     *          现在回过来看本函数的输入参数，batch就是大段的偏移数（从第几个大段开始，对应是第几张训练图片），
+     *          由location计算得到的n就是中段的偏移数（从第几个中段开始，对应是第几个矩形框），
+     *          entry就是小段的偏移数（从几个小段开始，对应具体是那种参数，x,c还是C1），而loc则是最后的定位，
+     *          前面确定好第几大段中的第几中段中的第几小段的首地址，loc就是从该首地址往后数loc个元素，得到最终定位
+     *          某个具体参数（x或c或C1）的索引值，比如l.output中存储的数据如下所示（这里假设只存了一张训练图片的输出，
+     *          因此batch只能为0；并假设l.out_w=l.out_h=2,l.classes=2）：
+     *          xxxxyyyywwwwhhhhccccC1C1C1C1C2C2C2C2-#-xxxxyyyywwwwhhhhccccC1C1C1C1C2C2C2C2，
+     *          n=0则定位到-#-左边的首地址（表示每个网格预测的第一个矩形框），n=1则定位到-#-右边的首地址（表示每个网格预测的第二个矩形框）
+     *          entry=0,loc=0获取的是x的索引，且获取的是第一个x也即l.out_w*l.out_h个网格中第一个网格中第一个矩形框x参数的索引；
+     *          entry=4,loc=1获取的是c的索引，且获取的是第二个c也即l.out_w*l.out_h个网格中第二个网格中第一个矩形框c参数的索引；
+     *          entry=5,loc=2获取的是C1的索引，且获取的是第三个C1也即l.out_w*l.out_h个网格中第三个网格中第一个矩形框C1参数的索引；
+     *          如果要获取第一个网格中第一个矩形框w参数的索引呢？如果已经获取了其x值的索引，显然用x的索引加上3*l.out_w*l.out_h即可获取到，
+     *          这正是delta_region_box()函数的做法；
+     *          如果要获取第三个网格中第一个矩形框C2参数的索引呢？如果已经获取了其C1值的索引，显然用C1的索引加上l.out_w*l.out_h即可获取到，
+     *          这正是delta_region_class()函数中的做法；
+     *          由上可知，entry=0时,即偏移0个小段，是获取x的索引；entry=4,是获取自信度信息c的索引；entry=5，是获取C1的索引.
+     *          l.output的存储方式大致就是这样，个人觉得说的已经很清楚了，但可视化效果终究不如图文说明～
+    */
     int n = location / (l.w * l.h);
     int loc = location % (l.w * l.h);
     return batch * l.outputs + n * l.w * l.h * (4 + l.classes + 1) + entry * l.w * l.h + loc;
@@ -375,25 +439,31 @@ static int entry_index(layer l, int batch, int location, int entry)
 void forward_yolo_layer(const layer l, network_state state)
 {
     int i, j, b, t, n;
+    // 将层输入直接拷贝到层输出
     memcpy(l.output, state.input, l.outputs * l.batch * sizeof(float));
 
 #ifndef GPU
+    // 在cpu里，把预测输出的 x,y,confidence 和80种类别都 sigmoid 激活，确保值在0~1
     for (b = 0; b < l.batch; ++b)
     {
         for (n = 0; n < l.n; ++n)
         {
+            // 获取第b个batch开始的index
             int index = entry_index(l, b, n * l.w * l.h, 0);
+            // 对预测的tx,ty进行sigmoid
             activate_array(l.output + index, 2 * l.w * l.h, LOGISTIC);        // x,y,
             scal_add_cpu(2 * l.w * l.h, l.scale_x_y, -0.5 * (l.scale_x_y - 1), l.output + index, 1);    // scale x,y
+            // 获取第b个batch confidence开始的index
             index = entry_index(l, b, n * l.w * l.h, 4);
+            // 对预测的confidence以及class进行sigmoid
             activate_array(l.output + index, (1 + l.classes) * l.w * l.h, LOGISTIC);
         }
     }
 #endif
 
-    // delta is zeroed
+    // 将yolo层的loss进行初始化(包含整个batch的)
     memset(l.delta, 0, l.outputs * l.batch * sizeof(float));
-    if (!state.train) return;
+    if (!state.train) return;  // inference阶段,到此结束
     //float avg_iou = 0;
     float tot_iou = 0;
     float tot_giou = 0;
@@ -411,24 +481,28 @@ void forward_yolo_layer(const layer l, network_state state)
     int count = 0;
     int class_count = 0;
     *(l.cost) = 0;
-    for (b = 0; b < l.batch; ++b)
+    for (b = 0; b < l.batch; ++b)  // 遍历batch中的每一张图片
     {
         for (j = 0; j < l.h; ++j)
         {
-            for (i = 0; i < l.w; ++i)
+            for (i = 0; i < l.w; ++i)  // 遍历每个cell, 当前cell编号[j, i]
             {
-                for (n = 0; n < l.n; ++n)
+                for (n = 0; n < l.n; ++n)  // 遍历每一个bbox, 当前bbox编号[n]
                 {
+                    // 获得第j*w+i个cell第n个bbox的index
                     int box_index = entry_index(l, b, n * l.w * l.h + j * l.w + i, 0);
+                    // 计算第j*w+i个cell第n个bbox在当前特征图上的相对位置[x,y],在网络输入图片上的相对宽度,高度[w,h]
                     box pred = get_yolo_box(l.output, l.biases, l.mask[n], box_index, i, j, l.w, l.h, state.net.w,
                                             state.net.h, l.w * l.h);
                     float best_match_iou = 0;
                     int best_match_t = 0;
-                    float best_iou = 0;
-                    int best_t = 0;
-                    for (t = 0; t < l.max_boxes; ++t)
+                    float best_iou = 0;  // 保存最大iou
+                    int best_t = 0;  // 保存最大iou的bbox id
+                    for (t = 0; t < l.max_boxes; ++t)  // 遍历每一个GT bbox
                     {
+                        // 将第t个bbox由float数组转bbox结构体,方便计算iou
                         box truth = float_to_box_stride(state.truth + t * (4 + 1) + b * l.truths, 1);
+                        // 获取第t个bbox的类别，检查是否有标注错误
                         int class_id = state.truth[t * (4 + 1) + b * l.truths + 4];
                         if (class_id >= l.classes || class_id < 0)
                         {
@@ -439,16 +513,18 @@ void forward_yolo_layer(const layer l, network_state state)
                             if (check_mistakes) getchar();
                             continue; // if label contains class_id more than number of classes in the cfg-file and class_id check garbage value
                         }
+                        // 如果x坐标为0则取消,因为yolov3这里定义了max_boxes个bbox
                         if (!truth.x) break;  // continue;
 
-                        int class_index = entry_index(l, b, n * l.w * l.h + j * l.w + i, 4 + 1);
-                        int obj_index = entry_index(l, b, n * l.w * l.h + j * l.w + i, 4);
+                        int class_index = entry_index(l, b, n * l.w * l.h + j * l.w + i, 4 + 1);  // 置信度索引位置
+                        int obj_index = entry_index(l, b, n * l.w * l.h + j * l.w + i, 4);  // objectness score索引位置
                         float objectness = l.output[obj_index];
                         if (isnan(objectness) || isinf(objectness)) l.output[obj_index] = 0;
+                        // 遍历所有类别置信度，若某个类别的置信度超过0.25，返回1
                         int class_id_match = compare_yolo_class(l.output, l.classes, class_index, l.w * l.h, objectness,
                                                                 class_id, 0.25f);
 
-                        float iou = box_iou(pred, truth);
+                        float iou = box_iou(pred, truth);   // 计算pred bbox与第t个GT bbox之间的iou
                         if (iou > best_match_iou && class_id_match == 1)
                         {
                             best_match_iou = iou;
@@ -460,6 +536,8 @@ void forward_yolo_layer(const layer l, network_state state)
                             best_t = t;
                         }
                     }
+
+                    // 获得第j*w+i个cell第n个bbox的confidence索引
                     int obj_index = entry_index(l, b, n * l.w * l.h + j * l.w + i, 4);
                     avg_anyobj += l.output[obj_index];
                     l.delta[obj_index] = l.cls_normalizer * (0 - l.output[obj_index]);
