@@ -1,6 +1,6 @@
 classes= 20
-train  = /mnt/c/Users/fangzhou/code/res/deep-learning/04.detect/darknet-master/VOCdevkit/train.txt
-valid  = /mnt/c/Users/fangzhou/code/res/deep-learning/04.detect/darknet-master/VOCdevkit/2007_test_test.txt
+train  = /home/liuhy/res/deep-learning/04.目标检测/darknet-yolov4/VOCdevkit/train.txt
+valid  = /home/liuhy/res/deep-learning/04.目标检测/darknet-yolov4/VOCdevkit/2007_test_test.txt
 names = data/voc.names
 backup = backup
 

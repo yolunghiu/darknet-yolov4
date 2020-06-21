@@ -57,3 +57,4 @@ cmake-build-debug/
 VOCdevkit/
 yolov4.conv.137
 .idea/
+build-release/
