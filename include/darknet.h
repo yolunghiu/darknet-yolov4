@@ -110,7 +110,7 @@ typedef struct tree
 // activations.h
 typedef enum
 {
-    LOGISTIC,
+    LOGISTIC,   // sigmoid
     RELU,
     RELU6,
     RELIE,
@@ -356,7 +356,9 @@ struct layer
     float mask_scale;
     float class_scale;
     int bias_match;
-    float random;   // 随机调整训练网络大小，从 320x320 ~ 608x608
+    // 多尺度训练，如果为1，那么每次10次迭代的图片大小在[320,608]区间内随机选择，步长为32
+    // 如果为0，图像尺寸为net定义的高宽随机调整训练网络大小
+    float random;
     float ignore_thresh;
     float truth_thresh;
     float iou_thresh;
@@ -720,7 +722,7 @@ typedef struct network
     int step;
     int max_batches;    // 最多更新次数，完成max_batches次参数更新后停止训练
     int num_boxes;
-    int train_images_num;
+    int train_images_num;   // 和net.m初始值相同，都是所有训练图片数量
     float *seq_scales;
     float *scales;
     int *steps;
@@ -737,7 +739,7 @@ typedef struct network
     int outputs;
     int truths;
     int notruth;
-    int h, w, c;
+    int h, w, c;  // [net] height, width, channels
     int max_crop;
     int min_crop;
     float max_ratio;
@@ -934,7 +936,7 @@ typedef enum
 // data.h
 typedef struct load_args
 {
-    int threads;
+    int threads;    // 读取数据使用的线程数
     char **paths;   // 所有图片路径，从txt文件中读出
     char *path;
     int n;          // 每次迭代使用的图片数量
