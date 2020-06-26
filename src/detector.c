@@ -994,21 +994,32 @@ float
 validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thresh_calc_avg_iou, const float iou_thresh,
                       const int map_points, int letter_box, network *existing_net)
 {
+    /* datacfg: voc.data
+     * cfgfile: yolov4-voc.cfg
+     * weightfile: yolov4.weights
+     * thresh_calc_avg_iou: 0.25
+     * iou_thresh: 0.5 for mAP
+     * map_points: default 0
+     * letter_box: default 0
+     * existing_net: NULL
+     * */
+
     int j;
     list *options = read_data_cfg(datacfg);
+
+    // 测试mAP所用的图片
     char *valid_images = option_find_str(options, "valid", "data/train.txt");
     char *difficult_valid_images = option_find_str(options, "difficult", NULL);
+    // data/voc.names for voc
     char *name_list = option_find_str(options, "names", "data/names.list");
     int names_size = 0;
+    // 数据集中的label name组成的数组
     char **names = get_labels_custom(name_list, &names_size); //get_labels(name_list);
-    //char *mapf = option_find_str(options, "map", 0);
-    //int *map = 0;
-    //if (mapf) map = read_map(mapf);
     FILE *reinforcement_fd = NULL;
 
+    // 创建网络,加载参数
     network net;
-    //int initial_batch;
-    if (existing_net)
+    if (existing_net)  // 默认为NULL
     {
         char *train_images = option_find_str(options, "train", "data/train.txt");
         valid_images = option_find_str(options, "valid", train_images);
@@ -1026,30 +1037,32 @@ validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thre
         fuse_conv_batchnorm(net);
         calculate_binary_weights(net);
     }
+
+    //判断类别数是否符合要求
     if (net.layers[net.n - 1].classes != names_size)
     {
         printf("\n Error: in the file %s number of names %d that isn't equal to classes=%d in the file %s \n",
                name_list, names_size, net.layers[net.n - 1].classes, cfgfile);
         getchar();
     }
+
     srand(time(0));
     printf("\n calculation mAP (mean average precision)...\n");
 
     list *plist = get_paths(valid_images);
-    char **paths = (char **) list_to_array(plist);
+    char **paths = (char **) list_to_array(plist);  // 图片路径
 
     char **paths_dif = NULL;
-    if (difficult_valid_images)
+    if (difficult_valid_images)  // 默认为NULL
     {
         list *plist_dif = get_paths(difficult_valid_images);
         paths_dif = (char **) list_to_array(plist_dif);
     }
 
-
     layer l = net.layers[net.n - 1];
     int classes = l.classes;
 
-    int m = plist->size;
+    int m = plist->size;  // 计算mAP所用图片的数量
     int i = 0;
     int t;
 
@@ -1057,6 +1070,7 @@ validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thre
     const float nms = .45;
     //const float iou_thresh = 0.5;
 
+    // 分配内存,用于加载图片
     int nthreads = 4;
     if (m < 4) nthreads = m;
     image *val = (image *) xcalloc(nthreads, sizeof(image));
@@ -1069,10 +1083,9 @@ validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thre
     args.w = net.w;
     args.h = net.h;
     args.c = net.c;
-    if (letter_box) args.type = LETTERBOX_DATA;
+    if (letter_box) args.type = LETTERBOX_DATA;  // 默认为0
     else args.type = IMAGE_DATA;
 
-    //const float thresh_calc_avg_iou = 0.24;
     float avg_iou = 0;
     int tp_for_thresh = 0;
     int fp_for_thresh = 0;
@@ -1088,17 +1101,20 @@ validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thre
     int *tp_for_thresh_per_class = (int *) xcalloc(classes, sizeof(int));
     int *fp_for_thresh_per_class = (int *) xcalloc(classes, sizeof(int));
 
+    // 每次加载4张图片
     for (t = 0; t < nthreads; ++t)
     {
         args.path = paths[i + t];
         args.im = &buf[t];
         args.resized = &buf_resized[t];
-        thr[t] = load_data_in_thread(args);
+        thr[t] = load_data_in_thread(args);  // todo: multi thread
     }
+
     time_t start = time(0);
-    for (i = nthreads; i < m + nthreads; i += nthreads)
+    for (i = nthreads; i < m + nthreads; i += nthreads)  // 共m张图片,每次读取nthreads张
     {
         fprintf(stderr, "\r%d", i);
+        // todo: multi thread
         for (t = 0; t < nthreads && (i + t - nthreads) < m; ++t)
         {
             pthread_join(thr[t], 0);
@@ -1112,14 +1128,16 @@ validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thre
             args.resized = &buf_resized[t];
             thr[t] = load_data_in_thread(args);
         }
+
         for (t = 0; t < nthreads && i + t - nthreads < m; ++t)
         {
             const int image_index = i + t - nthreads;
             char *path = paths[image_index];
-            char *id = basecfg(path);
+            char *id = basecfg(path);  // 从图片的绝对路径中获取图片文件名
             float *X = val_resized[t].data;
             network_predict(net, X);
 
+            // 获取所有检测框
             int nboxes = 0;
             float hier_thresh = 0;
             detection *dets;
@@ -1130,14 +1148,14 @@ validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thre
             {
                 dets = get_network_boxes(&net, 1, 1, thresh, hier_thresh, 0, 0, &nboxes, letter_box);
             }
-            //detection *dets = get_network_boxes(&net, val[t].w, val[t].h, thresh, hier_thresh, 0, 1, &nboxes, letter_box); // for letter_box=1
+
             if (nms)
             {
                 if (l.nms_kind == DEFAULT_NMS) do_nms_sort(dets, nboxes, l.classes, nms);
                 else diounms_sort(dets, nboxes, l.classes, nms, l.nms_kind, l.beta_nms);
             }
-            //if (nms) do_nms_obj(dets, nboxes, l.classes, nms);
 
+            // 从标签文件中读取所有真实box
             char labelpath[4096];
             replace_image_to_label(path, labelpath);
             int num_labels = 0;
@@ -1148,7 +1166,7 @@ validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thre
                 truth_classes_count[truth[j].id]++;
             }
 
-            // difficult
+            // difficult, 默认不处理
             box_label *truth_dif = NULL;
             int num_labels_dif = 0;
             if (paths_dif)
@@ -1164,9 +1182,8 @@ validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thre
             const int checkpoint_detections_count = detections_count;
 
             int i;
-            for (i = 0; i < nboxes; ++i)
+            for (i = 0; i < nboxes; ++i)  // 遍历每个预测的box
             {
-
                 int class_id;
                 for (class_id = 0; class_id < classes; ++class_id)
                 {
@@ -1251,25 +1268,12 @@ validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thre
 
             unique_truth_count += num_labels;
 
-            //static int previous_errors = 0;
-            //int total_errors = fp_for_thresh + (unique_truth_count - tp_for_thresh);
-            //int errors_in_this_image = total_errors - previous_errors;
-            //previous_errors = total_errors;
-            //if(reinforcement_fd == NULL) reinforcement_fd = fopen("reinforcement.txt", "wb");
-            //char buff[1000];
-            //sprintf(buff, "%s\n", path);
-            //if(errors_in_this_image > 0) fwrite(buff, sizeof(char), strlen(buff), reinforcement_fd);
-
             free_detections(dets, nboxes);
             free(id);
             free_image(val[t]);
             free_image(val_resized[t]);
         }
     }
-
-    //for (t = 0; t < nthreads; ++t) {
-    //    pthread_join(thr[t], 0);
-    //}
 
     if ((tp_for_thresh + fp_for_thresh) > 0)
         avg_iou = avg_iou / (tp_for_thresh + fp_for_thresh);
@@ -1362,7 +1366,6 @@ validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, float thre
     }
 
     free(truth_flags);
-
 
     double mean_average_precision = 0;
 

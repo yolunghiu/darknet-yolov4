@@ -194,7 +194,7 @@ load_image_augment_paths(char **paths, int n, int use_flip, int min, int max, in
     return X;
 }
 
-
+// 从真实标签文件中读取所有box,将box及其数量返回
 box_label *read_boxes(char *filename, int *n)
 {
     box_label *boxes = (box_label *) xcalloc(1, sizeof(box_label));
@@ -202,7 +202,6 @@ box_label *read_boxes(char *filename, int *n)
     if (!file)
     {
         printf("Can't open label file. (This can be normal only if you use MSCOCO): %s \n", filename);
-        //file_error(filename);
         FILE *fw = fopen("bad.list", "a");
         fwrite(filename, sizeof(char), strlen(filename), fw);
         char *new_line = "\n";

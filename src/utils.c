@@ -42,7 +42,7 @@ void *xmalloc(size_t size)
     return ptr;
 }
 
-// 对calloc函数进行封装
+// 对calloc函数进行封装,分配内存空间并初始化
 void *xcalloc(size_t nmemb, size_t size)
 {
     void *ptr = calloc(nmemb, size);
@@ -53,6 +53,7 @@ void *xcalloc(size_t nmemb, size_t size)
     return ptr;
 }
 
+// 尝试重新调整之前调用 malloc 或 calloc 所分配的 ptr 所指向的内存块的大小
 void *xrealloc(void *ptr, size_t size)
 {
     ptr = realloc(ptr, size);
@@ -296,6 +297,7 @@ void find_replace_extension(char *str, char *orig, char *rep, char *output)
     free(buffer);
 }
 
+// 传入的是图片的绝对路径,根据voc或coco数据集的映射关系,将其转换为图片对应label的绝对路径
 void replace_image_to_label(const char *input_path, char *output_path)
 {
     find_replace(input_path, "/images/train2014/", "/labels/train2014/", output_path);    // COCO
@@ -304,11 +306,7 @@ void replace_image_to_label(const char *input_path, char *output_path)
     find_replace(output_path, "\\images\\train2014\\", "\\labels\\train2014\\", output_path);    // COCO
     find_replace(output_path, "\\images\\val2014\\", "\\labels\\val2014\\", output_path);        // COCO
     find_replace(output_path, "\\JPEGImages\\", "\\labels\\", output_path);    // PascalVOC
-    //find_replace(output_path, "/images/", "/labels/", output_path);    // COCO
-    //find_replace(output_path, "/VOC2007/JPEGImages/", "/VOC2007/labels/", output_path);        // PascalVOC
-    //find_replace(output_path, "/VOC2012/JPEGImages/", "/VOC2012/labels/", output_path);        // PascalVOC
 
-    //find_replace(output_path, "/raw/", "/labels/", output_path);
     trim(output_path);
 
     // replace only ext of files
