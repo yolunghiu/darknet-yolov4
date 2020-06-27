@@ -13,13 +13,13 @@
 
 extern int check_mistakes;
 
-// 初始化网络时，创建[yolo]层
+// 初始化网络时,创建[yolo]层
 layer make_yolo_layer(int batch, int w, int h, int n, int total, int *mask, int classes, int max_boxes)
 {
     /* batch: 一个batch中包含图片的张数
      * w: 输入特征图的宽度
-     * h: 输入特征图的高度?
-     * n: 一个cell预测多少个bbox?
+     * h: 输入特征图的高度
+     * n: 一个cell预测多少个bbox
      * total: total Anchor bbox的数目
      * mask: 使用的是0,1,2 还是...
      * classes: 网络需要识别的物体类别数
@@ -57,9 +57,9 @@ layer make_yolo_layer(int batch, int w, int h, int n, int total, int *mask, int 
     l.outputs = h * w * n * (classes + 4 + 1);
     l.inputs = l.outputs;
 
-    // 每张图片含有的真实矩形框参数的个数（max_boxes表示一张图片中最多有max_boxes个ground truth矩形框，每个真实矩形框有
-    // 5个参数，包括x,y,w,h四个定位参数，以及物体类别）,注意max_boxes是darknet程序内写死的，实际上每张图片可能
-    // 并没有max_boxes个真实矩形框，也能没有这么多参数，但为了保持一致性，还是会留着这么大的存储空间，只是其中的值为空而已
+    // 每张图片含有的真实矩形框参数的个数（max_boxes表示一张图片中最多有max_boxes个ground truth矩形框,每个真实矩形框有
+    // 5个参数,包括x,y,w,h四个定位参数,以及物体类别）,注意max_boxes是darknet程序内写死的,实际上每张图片可能
+    // 并没有max_boxes个真实矩形框,也能没有这么多参数,但为了保持一致性,还是会留着这么大的存储空间,只是其中的值为空而已
     l.max_boxes = max_boxes;
     l.truths = l.max_boxes * (4 + 1);    // 90*(4 + 1);
     // yolo层误差项(包含整个batch的)
@@ -101,7 +101,7 @@ layer make_yolo_layer(int batch, int w, int h, int n, int total, int *mask, int 
     return l;
 }
 
-// 当使用随机尺寸训练网络时，使用这个函数调整[yolo]层
+// 当使用随机尺寸训练网络时,使用这个函数调整[yolo]层
 void resize_yolo_layer(layer *l, int w, int h)
 {
     l->w = w;
@@ -140,12 +140,12 @@ void resize_yolo_layer(layer *l, int w, int h)
 #endif
 }
 
-// 私有函数，只在本文件中调用，根据预测信息解码所预测的box(解码成x,y,w,h)
+// 私有函数,只在本文件中调用,根据预测信息解码所预测的box(解码成x,y,w,h)
 box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride)
 {
-    /* x:       yolo_layer的输出，即l.output，包含所有batch预测得到的矩形框信息
+    /* x:       yolo_layer的输出,即l.output,包含所有batch预测得到的矩形框信息
      * biases:  先验框的宽和高
-     * index:   矩形框的首地址（索引，矩形框中存储的首个参数x在l.output中的索引）
+     * index:   矩形框的首地址（索引,矩形框中存储的首个参数x在l.output中的索引）
      * i,j:     cell的位置（相当于公式中的cx,cy）
      * lw,lh:   特征图的宽度、高度
      * w,h:     输入图像的宽度、高度
@@ -360,7 +360,7 @@ void delta_yolo_class(float *output, float *delta, int index, int class_id, int 
     }
 }
 
-// 遍历所有类别置信度，若某个类别的置信度超过0.25，返回1
+// 遍历所有类别置信度,若某个类别的置信度超过0.25,返回1
 int compare_yolo_class(float *output, int classes, int class_index, int stride, float objectness, int class_id,
                        float conf_thresh)
 {
@@ -381,55 +381,58 @@ int compare_yolo_class(float *output, int classes, int class_index, int stride, 
 static int entry_index(layer l, int batch, int location, int entry)
 {
     /**
-     * @brief 计算某个矩形框中某个参数在l.output中的索引。一个矩形框包含了x,y,w,h,c,C1,C2...,Cn信息，
-     *        本函数负责获取该矩形框首个定位信息(x值)在l.output中索引、获取该矩形框置信度信息c
-     *        在l.output中的索引、获取该矩形框分类所属概率的首个概率也即C1值的索引，具体是获取矩形框哪个参数的索引，
-     *        取决于输入参数entry的值，这些在forward_region_layer()函数中都有用到，由于l.output的存储方式，
-     *        当entry=0时，就是获取矩形框x参数在l.output中的索引；当entry=4时，就是获取矩形框置信度信息c在
-     *        l.output中的索引；当entry=5时，就是获取矩形框首个所属概率C1在l.output中的索引
-     * @param l 当前region_layer
-     * @param batch 当前照片是整个batch中的第几张，因为l.output中包含整个batch的输出，所以要定位某张训练图片
-     *              输出的众多网格中的某个矩形框，当然需要该参数.
-     * @param location 这个参数，说实话，感觉像个鸡肋参数，函数中用这个参数获取n和loc的值，这个n就是表示网格中
-     *                 的第几个预测矩形框（比如每个网格预测5个矩形框，那么n取值范围就是从0~4，loc就是某个
-     *                 通道上的元素偏移（region_layer输出的通道数为l.out_c = (classes + coords + 1)，
-     *                 这样说可能没有说明白，这都与l.output的存储结构相关，见下面详细注释以及其他说明。总之，
-     *                 查看一下调用本函数的父函数forward_region_layer()就知道了，可以直接输入n和j*l.w+i的，
-     *                 没有必要输入location，这样还得重新计算一次n和loc.
-     * @param entry 切入点偏移系数，关于这个参数，就又要扯到l.output的存储结构了，见下面详细注释以及其他说明.
-     * @details l.output这个参数的存储内容以及存储方式已经在多个地方说明了，再多的文字都不及图文说明，此处再
-     *          简要罗嗦几句，更为具体的参考图文说明。l.output中存储了整个batch的训练输出，每张训练图片都会输出
-     *          l.out_w*l.out_h个网格，每个网格会预测l.n个矩形框，每个矩形框含有l.classes+l.coords+1个参数，
-     *          而最后一层的输出通道数为l.n*(l.classes+l.coords+1)，可以想象下最终输出的三维张量是个什么样子的。
-     *          展成一维数组存储时，l.output可以首先分成batch个大段，每个大段存储了一张训练图片的所有输出；进一步细分，
-     *          取其中第一大段分析，该大段中存储了第一张训练图片所有输出网格预测的矩形框信息，每个网格预测了l.n个矩形框，
-     *          存储时，l.n个矩形框是分开存储的，也就是先存储所有网格中的第一个矩形框，而后存储所有网格中的第二个矩形框，
-     *          依次类推，如果每个网格中预测5个矩形框，则可以继续把这一大段分成5个中段。继续细分，5个中段中取第
-     *          一个中段来分析，这个中段中按行（有l.out_w*l.out_h个网格，按行存储）依次存储了这张训练图片所有输出网格中
-     *          的第一个矩形框信息，要注意的是，这个中段存储的顺序并不是挨个挨个存储每个矩形框的所有信息，
-     *          而是先存储所有矩形框的x，而后是所有的y,然后是所有的w,再是h，c，最后的的概率数组也是拆分进行存储，
-     *          并不是一下子存储完一个矩形框所有类的概率，而是先存储所有网格所属第一类的概率，再存储所属第二类的概率，
-     *          具体来说这一中段首先存储了l.out_w*l.out_h个x，然后是l.out_w*l.out_c个y，依次下去，
-     *          最后是l.out_w*l.out_h个C1（属于第一类的概率，用C1表示，下面类似），l.out_w*l.outh个C2,...,
-     *          l.out_w*l.out_c*Cn（假设共有n类），所以可以继续将中段分成几个小段，依次为x,y,w,h,c,C1,C2,...Cn
-     *          小段，每小段的长度都为l.out_w*l.out_c.
-     *          现在回过来看本函数的输入参数，batch就是大段的偏移数（从第几个大段开始，对应是第几张训练图片），
-     *          由location计算得到的n就是中段的偏移数（从第几个中段开始，对应是第几个矩形框），
-     *          entry就是小段的偏移数（从几个小段开始，对应具体是那种参数，x,c还是C1），而loc则是最后的定位，
-     *          前面确定好第几大段中的第几中段中的第几小段的首地址，loc就是从该首地址往后数loc个元素，得到最终定位
-     *          某个具体参数（x或c或C1）的索引值，比如l.output中存储的数据如下所示（这里假设只存了一张训练图片的输出，
+     * @brief 计算某个矩形框中某个参数在l.output中的索引.一个矩形框包含了x,y,w,h,c,C1,C2...,Cn信息,
+     *        本函数负责获取该矩形框首个定位信息(x值)在l.output中的索引、该矩形框置信度信息c
+     *        在l.output中的索引、该矩形框分类所属概率的首个概率的索引,具体是获取矩形框哪个参数的索引,
+     *        取决于输入参数entry的值,由于l.output的存储方式:
+     *        当entry=0时,就是获取矩形框x参数在l.output中的索引;
+     *        当entry=4时,就是获取矩形框置信度信息c在l.output中的索引;
+     *        当entry=5时,就是获取矩形框首个所属概率C1在l.output中的索引.
+     * @param l 在yolov3和yolov4中指的是 [yolo] 层
+     * @param batch 当前照片是整个batch中的第几张,因为l.output中包含整个batch的输出,所以要定位某张训练图片
+     *              输出的众多网格中的某个矩形框,当然需要该参数.
+     * @param location 这个参数,说实话,感觉像个鸡肋参数,函数中用这个参数获取n和loc的值,这个n就是表示网格中
+     *                 的第几个预测矩形框（比如每个网格预测5个矩形框,那么n取值范围就是从0~4,loc就是某个
+     *                 通道上的元素偏移（region_layer输出的通道数为l.out_c = (classes + coords + 1),
+     *                 这样说可能没有说明白,这都与l.output的存储结构相关,见下面详细注释以及其他说明.总之,
+     *                 查看一下调用本函数的父函数forward_region_layer()就知道了,可以直接输入n和j*l.w+i的,
+     *                 没有必要输入location,这样还得重新计算一次n和loc.
+     * @param entry 切入点偏移系数,关于这个参数,就又要扯到l.output的存储结构了,见下面详细注释以及其他说明.
+     * @details l.output中存储了整个batch的训练输出,每张训练图片都会输出l.out_w*l.out_h个网格,
+     *          每个网格会预测l.n个矩形框,每个矩形框含有l.classes+l.coords+1个参数,而最后一层的输出通道数
+     *          为l.n*(l.classes+l.coords+1).
+     *
+     *          展成一维数组存储时,l.output可以首先分成batch个大段,每个大段存储了一张训练图片的所有输出.
+     *
+     *          进一步细分,取其中第一大段分析,该大段中存储了第一张训练图片所有输出网格预测的矩形框信息,每个网格预测了l.n个矩形框,
+     *          存储时,l.n个矩形框是分开存储的,也就是先存储所有网格中的第一个矩形框,而后存储所有网格中的第二个矩形框,
+     *          依次类推,如果每个网格中预测3个矩形框,则可以继续把这一大段分成3个中段.
+     *
+     *          继续细分,3个中段中取第一个中段来分析,这个中段中按行（有l.out_w*l.out_h个网格,按行存储）
+     *          依次存储了这张训练图片所有输出网格中的第一个矩形框信息,要注意的是,这个中段存储的顺序并不是挨个存储每个矩形框的所有信息,
+     *          而是先存储所有矩形框的x,而后是所有的y,然后是所有的w,再是h,c,最后的的概率数组也是拆分进行存储,
+     *          并不是一下子存储完一个矩形框所有类的概率,而是先存储所有网格所属第一类的概率,再存储所属第二类的概率,
+     *          具体来说这一中段首先存储了l.out_w*l.out_h个x,然后是l.out_w*l.out_c个y,依次下去,
+     *          最后是l.out_w*l.out_h个C1（属于第一类的概率,用C1表示,下面类似）,l.out_w*l.outh个C2,...,
+     *          l.out_w*l.out_c*Cn（假设共有n类）,所以可以继续将中段分成几个小段,依次为x,y,w,h,c,C1,C2,...Cn
+     *          小段,每小段的长度都为l.out_w*l.out_c.
+     *
+     *          现在回过来看本函数的输入参数,batch就是大段的偏移数（从第几个大段开始,对应是第几张训练图片）,
+     *          由location计算得到的n就是中段的偏移数（从第几个中段开始,对应是第几个矩形框）,
+     *          entry就是小段的偏移数（从几个小段开始,对应具体是那种参数,x,c还是C1）,而loc则是最后的定位,
+     *          前面确定好第几大段中的第几中段中的第几小段的首地址,loc就是从该首地址往后数loc个元素,得到最终定位
+     *          某个具体参数（x或c或C1）的索引值,比如l.output中存储的数据如下所示（这里假设只存了一张训练图片的输出,
      *          因此batch只能为0；并假设l.out_w=l.out_h=2,l.classes=2）：
-     *          xxxxyyyywwwwhhhhccccC1C1C1C1C2C2C2C2-#-xxxxyyyywwwwhhhhccccC1C1C1C1C2C2C2C2，
-     *          n=0则定位到-#-左边的首地址（表示每个网格预测的第一个矩形框），n=1则定位到-#-右边的首地址（表示每个网格预测的第二个矩形框）
-     *          entry=0,loc=0获取的是x的索引，且获取的是第一个x也即l.out_w*l.out_h个网格中第一个网格中第一个矩形框x参数的索引；
-     *          entry=4,loc=1获取的是c的索引，且获取的是第二个c也即l.out_w*l.out_h个网格中第二个网格中第一个矩形框c参数的索引；
-     *          entry=5,loc=2获取的是C1的索引，且获取的是第三个C1也即l.out_w*l.out_h个网格中第三个网格中第一个矩形框C1参数的索引；
-     *          如果要获取第一个网格中第一个矩形框w参数的索引呢？如果已经获取了其x值的索引，显然用x的索引加上3*l.out_w*l.out_h即可获取到，
+     *          xxxxyyyywwwwhhhhccccC1C1C1C1C2C2C2C2-#-xxxxyyyywwwwhhhhccccC1C1C1C1C2C2C2C2,
+     *          n=0则定位到-#-左边的首地址（表示每个网格预测的第一个矩形框）,n=1则定位到-#-右边的首地址（表示每个网格预测的第二个矩形框）
+     *          entry=0,loc=0获取的是x的索引,且获取的是第一个x也即l.out_w*l.out_h个网格中第一个网格中第一个矩形框x参数的索引；
+     *          entry=4,loc=1获取的是c的索引,且获取的是第二个c也即l.out_w*l.out_h个网格中第二个网格中第一个矩形框c参数的索引；
+     *          entry=5,loc=2获取的是C1的索引,且获取的是第三个C1也即l.out_w*l.out_h个网格中第三个网格中第一个矩形框C1参数的索引；
+     *          如果要获取第一个网格中第一个矩形框w参数的索引呢？如果已经获取了其x值的索引,显然用x的索引加上3*l.out_w*l.out_h即可获取到,
      *          这正是delta_region_box()函数的做法；
-     *          如果要获取第三个网格中第一个矩形框C2参数的索引呢？如果已经获取了其C1值的索引，显然用C1的索引加上l.out_w*l.out_h即可获取到，
+     *          如果要获取第三个网格中第一个矩形框C2参数的索引呢？如果已经获取了其C1值的索引,显然用C1的索引加上l.out_w*l.out_h即可获取到,
      *          这正是delta_region_class()函数中的做法；
-     *          由上可知，entry=0时,即偏移0个小段，是获取x的索引；entry=4,是获取自信度信息c的索引；entry=5，是获取C1的索引.
-     *          l.output的存储方式大致就是这样，个人觉得说的已经很清楚了，但可视化效果终究不如图文说明～
+     *          由上可知,entry=0时,即偏移0个小段,是获取x的索引；entry=4,是获取自信度信息c的索引；entry=5,是获取C1的索引.
     */
     int n = location / (l.w * l.h);
     int loc = location % (l.w * l.h);
@@ -439,11 +442,13 @@ static int entry_index(layer l, int batch, int location, int entry)
 void forward_yolo_layer(const layer l, network_state state)
 {
     int i, j, b, t, n;
-    // 将层输入直接拷贝到层输出
+
+    // 将层输入直接拷贝到层输出 dest src size
+    // yolo层的前一层是卷积层,yolo层只是对前面卷积层输出的特征图做一些处理
     memcpy(l.output, state.input, l.outputs * l.batch * sizeof(float));
 
 #ifndef GPU
-    // 在cpu里，把预测输出的 x,y,confidence 和80种类别都 sigmoid 激活，确保值在0~1
+    // 在cpu里,把预测输出的 x,y,confidence 和类别置信度都 sigmoid 激活,确保值在0~1
     for (b = 0; b < l.batch; ++b)
     {
         for (n = 0; n < l.n; ++n)
@@ -464,7 +469,7 @@ void forward_yolo_layer(const layer l, network_state state)
     // 将yolo层的loss进行初始化(包含整个batch的)
     memset(l.delta, 0, l.outputs * l.batch * sizeof(float));
     if (!state.train) return;  // inference阶段,到此结束
-    //float avg_iou = 0;
+
     float tot_iou = 0;
     float tot_giou = 0;
     float tot_diou = 0;
@@ -502,7 +507,7 @@ void forward_yolo_layer(const layer l, network_state state)
                     {
                         // 将第t个bbox由float数组转bbox结构体,方便计算iou
                         box truth = float_to_box_stride(state.truth + t * (4 + 1) + b * l.truths, 1);
-                        // 获取第t个bbox的类别，检查是否有标注错误
+                        // 获取第t个bbox的类别,检查是否有标注错误
                         int class_id = state.truth[t * (4 + 1) + b * l.truths + 4];
                         if (class_id >= l.classes || class_id < 0)
                         {
@@ -520,7 +525,7 @@ void forward_yolo_layer(const layer l, network_state state)
                         int obj_index = entry_index(l, b, n * l.w * l.h + j * l.w + i, 4);  // objectness score索引位置
                         float objectness = l.output[obj_index];
                         if (isnan(objectness) || isinf(objectness)) l.output[obj_index] = 0;
-                        // 遍历所有类别置信度，若某个类别的置信度超过0.25，返回1
+                        // 遍历所有类别置信度,若某个类别的置信度超过0.25,返回1
                         int class_id_match = compare_yolo_class(l.output, l.classes, class_index, l.w * l.h, objectness,
                                                                 class_id, 0.25f);
 
@@ -730,9 +735,6 @@ void forward_yolo_layer(const layer l, network_state state)
     if (count == 0) count = 1;
     if (class_count == 0) class_count = 1;
 
-    //*(l.cost) = pow(mag_array(l.delta, l.outputs * l.batch), 2);
-    //printf("Region %d Avg IOU: %f, Class: %f, Obj: %f, No Obj: %f, .5R: %f, .75R: %f,  count: %d\n", state.index, avg_iou / count, avg_cat / class_count, avg_obj / count, avg_anyobj / (l.w*l.h*l.n*l.batch), recall / count, recall75 / count, count);
-
     int stride = l.w * l.h;
     float *no_iou_loss_delta = (float *) calloc(l.batch * l.outputs, sizeof(float));
     memcpy(no_iou_loss_delta, l.delta, l.batch * l.outputs * sizeof(float));
@@ -857,43 +859,6 @@ void correct_yolo_boxes(detection *dets, int n, int w, int h, int netw, int neth
         dets[i].bbox = b;
     }
 }
-
-/*
-void correct_yolo_boxes(detection *dets, int n, int w, int h, int netw, int neth, int relative, int letter)
-{
-    int i;
-    int new_w=0;
-    int new_h=0;
-    if (letter) {
-        if (((float)netw / w) < ((float)neth / h)) {
-            new_w = netw;
-            new_h = (h * netw) / w;
-        }
-        else {
-            new_h = neth;
-            new_w = (w * neth) / h;
-        }
-    }
-    else {
-        new_w = netw;
-        new_h = neth;
-    }
-    for (i = 0; i < n; ++i){
-        box b = dets[i].bbox;
-        b.x =  (b.x - (netw - new_w)/2./netw) / ((float)new_w/netw);
-        b.y =  (b.y - (neth - new_h)/2./neth) / ((float)new_h/neth);
-        b.w *= (float)netw/new_w;
-        b.h *= (float)neth/new_h;
-        if(!relative){
-            b.x *= w;
-            b.w *= w;
-            b.y *= h;
-            b.h *= h;
-        }
-        dets[i].bbox = b;
-    }
-}
-*/
 
 int yolo_num_detections(layer l, float thresh)
 {

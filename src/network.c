@@ -277,17 +277,8 @@ void forward_network(network net, network_state state)
         {
             scal_cpu(l.outputs * l.batch, 0, l.delta, 1);
         }
-        //double time = get_time_point();
         l.forward(l, state);
-        //printf("%d - Predicted in %lf milli-seconds.\n", i, ((double)get_time_point() - time) / 1000);
         state.input = l.output;
-
-        /*
-        float avg_val = 0;
-        int k;
-        for (k = 0; k < l.outputs; ++k) avg_val += l.output[k];
-        printf(" i: %d - avg_val = %f \n", i, avg_val / l.outputs);
-        */
     }
 }
 
@@ -795,7 +786,7 @@ int num_detections(network *net, float thresh)
         {
             s += gaussian_yolo_num_detections(l, thresh);
         }
-        if (l.type == DETECTION || l.type == REGION)
+        if (l.type == DETECTION || l.type == REGION)  // 这应该是v1或v2用到的吧
         {
             s += l.w * l.h * l.n;
         }
@@ -824,11 +815,14 @@ int num_detections_batch(network *net, float thresh, int batch)
 
 detection *make_network_boxes(network *net, float thresh, int *num)
 {
-    layer l = net->layers[net->n - 1];
-    int i;
+    layer l = net->layers[net->n - 1];  // 最后一个yolo层
+
+    // net已经经过了forward, 这里获取检测到的box数量
     int nboxes = num_detections(net, thresh);
     if (num) *num = nboxes;
     detection *dets = (detection *) xcalloc(nboxes, sizeof(detection));
+
+    int i;
     for (i = 0; i < nboxes; ++i)
     {
         dets[i].prob = (float *) xcalloc(l.classes, sizeof(float));
@@ -962,7 +956,9 @@ fill_network_boxes_batch(network *net, int w, int h, float thresh, float hier, i
 detection *
 get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter)
 {
+    // num用于记录检测到的box数量
     detection *dets = make_network_boxes(net, thresh, num);
+
     fill_network_boxes(net, w, h, thresh, hier, map, relative, dets, letter);
     return dets;
 }

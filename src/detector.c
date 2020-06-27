@@ -1735,6 +1735,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     {
         load_weights(&net, weightfile);
     }
+
     net.benchmark_layers = benchmark_layers;
     fuse_conv_batchnorm(net);   // 融合conv bn
     calculate_binary_weights(net);  // xnor
@@ -1744,6 +1745,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
                name_list, names_size, net.layers[net.n - 1].classes, cfgfile);
         if (net.layers[net.n - 1].classes > names_size) getchar();
     }
+
     srand(2222222);
     char buff[256];
     char *input = buff;
@@ -1778,7 +1780,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             strtok(input, "\n");    // strtok处理后的字符串会变成分割后的第一个子串
         }
         image im = load_image(input, 0, 0, net.c);
-        image sized;
+        image sized;  // resize之后的图片
         if (letter_box) sized = letterbox_image(im, net.w, net.h);
         else sized = resize_image(im, net.w, net.h);
         layer l = net.layers[net.n - 1];

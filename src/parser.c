@@ -373,6 +373,8 @@ softmax_layer parse_softmax(list *options, size_params params)
     return layer;
 }
 
+// [yolo]层的mask属性里指定了当前层使用的是哪几种尺寸的anchor, 这里将anchor尺寸索引读到mask中返回
+// 同时传入的num参数保存了当前层使用了几种不同尺寸的anchor
 int *parse_yolo_mask(char *a, int *num)
 {
     int *mask = 0;
@@ -425,13 +427,14 @@ float *get_classes_multipliers(char *cpc, const int classes)
     return classes_multipliers;
 }
 
+// 根据配置文件中指定的配置,创建yolo层
 layer parse_yolo(list *options, size_params params)
 {
     int classes = option_find_int(options, "classes", 20);
-    int total = option_find_int(options, "num", 1);
-    int num = total;
+    int total = option_find_int(options, "num", 1);  // 代表网络中所有尺寸的anchor类别
+    int num = total;  // 代表当前[yolo]层使用了多少种不同尺寸的anchor
     char *a = option_find_str(options, "mask", 0);
-    int *mask = parse_yolo_mask(a, &num);
+    int *mask = parse_yolo_mask(a, &num);  // 解析mask
     int max_boxes = option_find_int_quiet(options, "max", 90);
     layer l = make_yolo_layer(params.batch, params.w, params.h, num, total, mask, classes, max_boxes);
     if (l.outputs != params.inputs)
@@ -440,7 +443,6 @@ layer parse_yolo(list *options, size_params params)
         printf("filters= in the [convolutional]-layer doesn't correspond to classes= or mask= in [yolo]-layer \n");
         exit(EXIT_FAILURE);
     }
-    //assert(l.outputs == params.inputs);
 
     char *cpc = option_find_str(options, "counters_per_class", 0);
     l.classes_multipliers = get_classes_multipliers(cpc, classes);
