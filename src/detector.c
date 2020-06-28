@@ -1724,6 +1724,12 @@ void calc_anchors(char *datacfg, int num_of_clusters, int width, int height, int
 void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh, float hier_thresh,
                    int dont_show, int ext_output, int save_labels, char *outfile, int letter_box, int benchmark_layers)
 {
+    /*
+     * @param thresh: 这里指的是对confidence进行过滤所用的阈值
+     * @param hier_thresh: yolov3/yolov4应该是没有用到这个
+     * @param outfile: 要将检测结果保存到的文件，是个json文件
+     * */
+
     list *options = read_data_cfg(datacfg);  // coco.data中的键值对构成的链表
     char *name_list = option_find_str(options, "names", "data/names.list");
     int names_size = 0;     // number classes
@@ -2094,7 +2100,7 @@ void run_detector(int argc, char **argv)
     int height = find_int_arg(argc, argv, "-height", -1);
     // extended output in test mode (output of rect bound coords)
     // and for recall mode (extended output table-like format with results for best_class fit)
-    int ext_output = find_arg(argc, argv, "-ext_output");
+    int ext_output = find_arg(argc, argv, "-ext_output");  // 测试阶段绘制检测结果时，是否输出坐标信息
     int save_labels = find_arg(argc, argv, "-save_labels");
     char *chart_path = find_char_arg(argc, argv, "-chart", 0);
     if (argc < 4)
