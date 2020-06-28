@@ -1811,7 +1811,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         }
 
         // 将检测结果写入json文件
-        if (json_file)
+        if (json_file)  // 若使用了-out参数，结果将被保存到json文件中
         {
             if (json_buf)
             {

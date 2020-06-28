@@ -787,6 +787,7 @@ void do_nms_sort_v2(box *boxes, float **probs, int total, int classes, float thr
     free(s);
 }
 
+// detection结构的变量进行大小比较时的比较函数
 int nms_comparator_v3(const void *pa, const void *pb)
 {
     detection a = *(detection *) pa;
@@ -847,8 +848,18 @@ void do_nms_obj(detection *dets, int total, int classes, float thresh)
     }
 }
 
+// 逐个类别进行nms，被抑制的box直接将对应类别的prob设为0
 void do_nms_sort(detection *dets, int total, int classes, float thresh)
 {
+    /*
+     * @param dets: 所有box
+     * @param total: box数量
+     * @param classes: 类别数量
+     * @param thresh: nms阈值，test代码里设置的是0.45
+     * */
+
+    // 这里要确保dets中所有的box都不应是background（confidence != 0)
+    // 从yolo层获取的结果本来就可以满足这个条件，可能是其他地方在调用nms时不能保证
     int i, j, k;
     k = total - 1;
     for (i = 0; i <= k; ++i)
@@ -862,7 +873,7 @@ void do_nms_sort(detection *dets, int total, int classes, float thresh)
             --i;
         }
     }
-    total = k + 1;
+    total = k + 1;  // 满足条件的box数量
 
     for (k = 0; k < classes; ++k)
     {
@@ -870,12 +881,16 @@ void do_nms_sort(detection *dets, int total, int classes, float thresh)
         {
             dets[i].sort_class = k;
         }
+
+        // 待排序数组，元素总数，每个元素所占空间，比较函数
+        // 这个函数执行完之后，所有box按照sort_class类别的置信度从大到小排好序
         qsort(dets, total, sizeof(detection), nms_comparator_v3);
+
         for (i = 0; i < total; ++i)
         {
             //printf("  k = %d, \t i = %d \n", k, i);
             if (dets[i].prob[k] == 0) continue;
-            box a = dets[i].bbox;
+            box a = dets[i].bbox;  // 当前类别置信度最高的box
             for (j = i + 1; j < total; ++j)
             {
                 box b = dets[j].bbox;

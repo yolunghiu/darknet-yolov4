@@ -880,7 +880,7 @@ typedef struct detection
     float *prob;  // 每个类别的score
     float *mask;
     float objectness;  // fg/bg置信度
-    int sort_class;
+    int sort_class;  // 在进行nms时，是逐类别排序的，这个参数代表当前进行nms的类别
     float *uc; // Gaussian_YOLOv3 - tx,ty,tw,th uncertainty
     int points; // bit-0 - center, bit-1 - top-left-corner, bit-2 - bottom-right-corner
 } detection;
