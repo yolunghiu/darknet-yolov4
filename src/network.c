@@ -771,6 +771,7 @@ float *network_predict(network net, float *input)
     return out;
 }
 
+// 统计当前网络输出的所有预测box中，confidence大于thresh的数量
 int num_detections(network *net, float thresh)
 {
     int i;
@@ -813,11 +814,12 @@ int num_detections_batch(network *net, float thresh, int batch)
     return s;
 }
 
+// 统计检测到的box数量，并分配相应大小的内存空间
 detection *make_network_boxes(network *net, float thresh, int *num)
 {
     layer l = net->layers[net->n - 1];  // 最后一个yolo层
 
-    // net已经经过了forward, 这里获取检测到的box数量
+    // net已经经过了forward, 这里获取检测到的confidence大于thresh的box数量
     int nboxes = num_detections(net, thresh);
     if (num) *num = nboxes;
     detection *dets = (detection *) xcalloc(nboxes, sizeof(detection));
@@ -881,12 +883,14 @@ void custom_get_region_detections(layer l, int w, int h, int net_w, int net_h, f
     correct_yolo_boxes(dets, l.w * l.h * l.n, w, h, net_w, net_h, relative, letter);
 }
 
+// 传入的net已经进行了forward，传入的dets已经根据forward后检测框的数量分配了内存空间
+// 这里遍历所有[yolo]层，向dets填入box的检测结果
 void fill_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, detection *dets,
                         int letter)
 {
     int prev_classes = -1;
     int j;
-    for (j = 0; j < net->n; ++j)
+    for (j = 0; j < net->n; ++j)  // 依次遍历网络中的每一层，取出所有检测层的结果
     {
         layer l = net->layers[j];
         if (l.type == YOLO)
@@ -956,7 +960,7 @@ fill_network_boxes_batch(network *net, int w, int h, float thresh, float hier, i
 detection *
 get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter)
 {
-    // num用于记录检测到的box数量
+    // thresh为confidence阈值，num用于记录检测到的box数量
     detection *dets = make_network_boxes(net, thresh, num);
 
     fill_network_boxes(net, w, h, thresh, hier, map, relative, dets, letter);

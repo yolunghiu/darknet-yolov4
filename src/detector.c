@@ -1791,7 +1791,8 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         network_predict(net, X);    // forward pass
         printf("%s: Predicted in %lf milli-seconds.\n", input, ((double) get_time_point() - time) / 1000);
 
-        // 获取所有检测框
+        // 经过`network_predict`，yolo层的output属性中保存了所有的检测结果，这里根据confidence
+        // 过滤出满足: confidence>thresh 的所有box
         int nboxes = 0;
         detection *dets = get_network_boxes(&net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes, letter_box);
 
@@ -2083,9 +2084,9 @@ void run_detector(int argc, char **argv)
     char *out_filename = find_char_arg(argc, argv, "-out_filename", 0);
     char *outfile = find_char_arg(argc, argv, "-out", 0);
     char *prefix = find_char_arg(argc, argv, "-prefix", 0);
-    float thresh = find_float_arg(argc, argv, "-thresh", .25);    // 0.24
+    float thresh = find_float_arg(argc, argv, "-thresh", .25);    // 0.24, 在测试阶段获取检测结果进行nms前，confidence大于阈值的box被保留
     float iou_thresh = find_float_arg(argc, argv, "-iou_thresh", .5);    // 0.5 for mAP
-    float hier_thresh = find_float_arg(argc, argv, "-hier", .5);
+    float hier_thresh = find_float_arg(argc, argv, "-hier", .5);  // 在[yolo]层里貌似没用到这个参数
     int cam_index = find_int_arg(argc, argv, "-c", 0);
     int frame_skip = find_int_arg(argc, argv, "-s", 0);
     int num_of_clusters = find_int_arg(argc, argv, "-num_of_clusters", 5);

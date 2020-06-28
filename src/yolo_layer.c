@@ -149,7 +149,7 @@ box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw
      * i,j:     cell的位置（相当于公式中的cx,cy）
      * lw,lh:   特征图的宽度、高度
      * w,h:     输入图像的宽度、高度
-     * stride:  当前特征图相对于原图降采样的倍数?
+     * stride:  l.w * l.h,
      * */
 
     box b;
@@ -158,10 +158,17 @@ box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw
     // y` = t.y * lh - i;   // y = ln(y`/(1-y`))   // y - output of previous conv-layer
     // w = ln(t.w * net.w / anchors_w); // w - output of previous conv-layer
     // h = ln(t.h * net.h / anchors_h); // h - output of previous conv-layer
+
+    // x、y预测值在forward时已经进行了sigmoid归一化，这里用特征图的宽高获取其在特征图的相对位置
+    // 猜测这是因为相对位置适用于向原始图像转化
     b.x = (i + x[index + 0 * stride]) / lw;
     b.y = (j + x[index + 1 * stride]) / lh;
+
+    // biases里存储的先验框宽高是针对原图的，因此在将预测值转化后，直接用原图的w、h进行相对值转化
+    // 猜测目的是为了与上面x、y的相对值保持一致，都是相对于原图的坐标值
     b.w = exp(x[index + 2 * stride]) * biases[2 * n] / w;
     b.h = exp(x[index + 3 * stride]) * biases[2 * n + 1] / h;
+
     return b;
 }
 
@@ -391,12 +398,7 @@ static int entry_index(layer l, int batch, int location, int entry)
      * @param l 在yolov3和yolov4中指的是 [yolo] 层
      * @param batch 当前照片是整个batch中的第几张,因为l.output中包含整个batch的输出,所以要定位某张训练图片
      *              输出的众多网格中的某个矩形框,当然需要该参数.
-     * @param location 这个参数,说实话,感觉像个鸡肋参数,函数中用这个参数获取n和loc的值,这个n就是表示网格中
-     *                 的第几个预测矩形框（比如每个网格预测5个矩形框,那么n取值范围就是从0~4,loc就是某个
-     *                 通道上的元素偏移（region_layer输出的通道数为l.out_c = (classes + coords + 1),
-     *                 这样说可能没有说明白,这都与l.output的存储结构相关,见下面详细注释以及其他说明.总之,
-     *                 查看一下调用本函数的父函数forward_region_layer()就知道了,可以直接输入n和j*l.w+i的,
-     *                 没有必要输入location,这样还得重新计算一次n和loc.
+     * @param location 用于获取当前cell i、当前anchor n （通过/和%）
      * @param entry 切入点偏移系数,关于这个参数,就又要扯到l.output的存储结构了,见下面详细注释以及其他说明.
      * @details l.output中存储了整个batch的训练输出,每张训练图片都会输出l.out_w*l.out_h个网格,
      *          每个网格会预测l.n个矩形框,每个矩形框含有l.classes+l.coords+1个参数,而最后一层的输出通道数
@@ -801,6 +803,7 @@ void backward_yolo_layer(const layer l, network_state state)
 // w,h: image width,height
 // netw,neth: network width,height
 // relative: 1 (all callers seems to pass TRUE)
+// 如果没有使用letter_box，box中的预测值在处理前后是没有改变的
 void correct_yolo_boxes(detection *dets, int n, int w, int h, int netw, int neth, int relative, int letter)
 {
     int i;
@@ -811,7 +814,7 @@ void correct_yolo_boxes(detection *dets, int n, int w, int h, int netw, int neth
     // Compute scale given image w,h vs network w,h
     // I think this "rotates" the image to match network to input image w/h ratio
     // new_h and new_w are really just network width and height
-    if (letter)
+    if (letter)  // 使用了letter_box
     {
         if (((float) netw / w) < ((float) neth / h))
         {
@@ -822,7 +825,7 @@ void correct_yolo_boxes(detection *dets, int n, int w, int h, int netw, int neth
             new_h = neth;
             new_w = (w * neth) / h;
         }
-    } else
+    } else  // 未使用letter_box，网络输入尺寸就是图片尺寸
     {
         new_w = netw;
         new_h = neth;
@@ -835,9 +838,8 @@ void correct_yolo_boxes(detection *dets, int n, int w, int h, int netw, int neth
     float ratiow = (float) new_w / netw;
     // ratio between rotated network width and network width
     float ratioh = (float) new_h / neth;
-    for (i = 0; i < n; ++i)
+    for (i = 0; i < n; ++i)  // n为所有box的数量
     {
-
         box b = dets[i].bbox;
         // x = ( x - (deltaw/2)/netw ) / ratiow;
         //   x - [(1/2 the difference of the network width and rotated width) / (network width)]
@@ -864,9 +866,9 @@ int yolo_num_detections(layer l, float thresh)
 {
     int i, n;
     int count = 0;
-    for (i = 0; i < l.w * l.h; ++i)
+    for (i = 0; i < l.w * l.h; ++i)  // 遍历特征图上每个cell
     {
-        for (n = 0; n < l.n; ++n)
+        for (n = 0; n < l.n; ++n)  // 遍历每个cell上设置的n个anchor
         {
             int obj_index = entry_index(l, 0, n * l.w * l.h + i, 4);
             if (l.output[obj_index] > thresh)
@@ -928,6 +930,7 @@ void avg_flipped_yolo(layer l)
     }
 }
 
+// 将输入的layer-l中，confidence>thresh的box数据依次填入dets所指向的内存空间
 int
 get_yolo_detections(layer l, int w, int h, int netw, int neth, float thresh, int *map, int relative, detection *dets,
                     int letter)
@@ -939,19 +942,18 @@ get_yolo_detections(layer l, int w, int h, int netw, int neth, float thresh, int
     // Need to comment it in order to batch processing >= 2 images
     //if (l.batch == 2) avg_flipped_yolo(l);
     int count = 0;
-    for (i = 0; i < l.w * l.h; ++i)
+    for (i = 0; i < l.w * l.h; ++i)  // 依次遍历每个cell
     {
         int row = i / l.w;
         int col = i % l.w;
-        for (n = 0; n < l.n; ++n)
+        for (n = 0; n < l.n; ++n)  // 依次遍历cell上的每个anchor
         {
             int obj_index = entry_index(l, 0, n * l.w * l.h + i, 4);
             float objectness = predictions[obj_index];
-            //if(objectness <= thresh) continue;    // incorrect behavior for Nan values
             if (objectness > thresh)
             {
                 //printf("\n objectness = %f, thresh = %f, i = %d, n = %d \n", objectness, thresh, i, n);
-                int box_index = entry_index(l, 0, n * l.w * l.h + i, 0);
+                int box_index = entry_index(l, 0, n * l.w * l.h + i, 0);  // x坐标索引值
                 dets[count].bbox = get_yolo_box(predictions, l.biases, l.mask[n], box_index, col, row, l.w, l.h, netw,
                                                 neth, l.w * l.h);
                 dets[count].objectness = objectness;

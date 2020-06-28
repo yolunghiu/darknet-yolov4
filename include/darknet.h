@@ -875,11 +875,11 @@ typedef struct ious
 // box.h
 typedef struct detection
 {
-    box bbox;
-    int classes;
-    float *prob;
+    box bbox;     // x、y、w、h
+    int classes;  // 类别总数，voc:20，coco:80
+    float *prob;  // 每个类别的score
     float *mask;
-    float objectness;
+    float objectness;  // fg/bg置信度
     int sort_class;
     float *uc; // Gaussian_YOLOv3 - tx,ty,tw,th uncertainty
     int points; // bit-0 - center, bit-1 - top-left-corner, bit-2 - bottom-right-corner
