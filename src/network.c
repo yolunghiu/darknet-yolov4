@@ -753,6 +753,7 @@ float *network_predict_ptr(network *net, float *input)
     return network_predict(*net, input);
 }
 
+// 将input输入到net中，进行前向传播，同时返回网络最后一层的输出(这在分类时有用，多个yolo检测层没用)
 float *network_predict(network net, float *input)
 {
 #ifdef GPU
