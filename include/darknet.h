@@ -324,7 +324,7 @@ struct layer
     float label_smooth_eps;
     int noloss;
     int softmax;
-    int classes;
+    int classes;  // number of different classes
     int coords;
     int background;
     int rescore;

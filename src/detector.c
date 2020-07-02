@@ -1754,7 +1754,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
 
     srand(2222222);
     char buff[256];
-    char *input = buff;
+    char *input = buff;  // 用于保存测试图片路径
     char *json_buf = NULL;
     int json_image_id = 0;
     FILE *json_file = NULL;
@@ -1798,11 +1798,11 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         printf("%s: Predicted in %lf milli-seconds.\n", input, ((double) get_time_point() - time) / 1000);
 
         // 经过`network_predict`，yolo层的output属性中保存了所有的检测结果，这里根据confidence
-        // 过滤出满足: confidence>thresh 的所有box
+        // 过滤出满足: confidence>thresh 的所有box，thresh这里使用的是0.24
         int nboxes = 0;
         detection *dets = get_network_boxes(&net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes, letter_box);
 
-        // nms
+        // nms，在对confidence进行过滤之后进行，根据probs进行nms，被抑制的box相应类别的prob置为0
         if (nms)
         {
             if (l.nms_kind == DEFAULT_NMS) do_nms_sort(dets, nboxes, l.classes, nms);

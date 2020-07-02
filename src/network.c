@@ -958,6 +958,7 @@ fill_network_boxes_batch(network *net, int w, int h, float thresh, float hier, i
     }
 }
 
+// 根据thresh对所有检测到的box进行过滤，过滤掉不满足 confidence>thresh 的box
 detection *
 get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter)
 {
@@ -997,9 +998,10 @@ void free_batch_detections(det_num_pair *det_num_pairs, int n)
 // ]
 //},
 
+// 将检测结果转换成json格式
 char *detection_to_json(detection *dets, int nboxes, int classes, char **names, long long int frame_id, char *filename)
 {
-    const float thresh = 0.005; // function get_network_boxes() has already filtred dets by actual threshold
+    const float thresh = 0.005; // function get_network_boxes() has already filtered dets by actual threshold(0.24)
 
     char *send_buf = (char *) calloc(1024, sizeof(char));
     if (!send_buf) return 0;
