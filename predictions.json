@@ -1,9 +1,0 @@
-[
-{
- "frame_id":1, 
- "filename":"data/eagle.jpg", 
- "objects": [ 
-  {"class_id":14, "name":"bird", "relative_coordinates":{"center_x":0.463243, "center_y":0.516378, "width":0.657553, "height":0.714100}, "confidence":0.973971}
- ] 
-}
-]
