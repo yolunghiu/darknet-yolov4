@@ -930,17 +930,13 @@ void avg_flipped_yolo(layer l)
     }
 }
 
-// 将输入的layer-l中，confidence>thresh的box数据依次填入dets所指向的内存空间
+// 将输入的layer-l中，confidence>thresh的box数据依次填入dets所指向的内存空间(这里对每个类别的概率进行了修改更新)
 int
 get_yolo_detections(layer l, int w, int h, int netw, int neth, float thresh, int *map, int relative, detection *dets,
                     int letter)
 {
-    //printf("\n l.batch = %d, l.w = %d, l.h = %d, l.n = %d \n", l.batch, l.w, l.h, l.n);
     int i, j, n;
     float *predictions = l.output;
-    // This snippet below is not necessary
-    // Need to comment it in order to batch processing >= 2 images
-    //if (l.batch == 2) avg_flipped_yolo(l);
     int count = 0;
     for (i = 0; i < l.w * l.h; ++i)  // 依次遍历每个cell
     {
@@ -950,9 +946,8 @@ get_yolo_detections(layer l, int w, int h, int netw, int neth, float thresh, int
         {
             int obj_index = entry_index(l, 0, n * l.w * l.h + i, 4);
             float objectness = predictions[obj_index];
-            if (objectness > thresh)
+            if (objectness > thresh)  // confidence>thresh的box被保留
             {
-                //printf("\n objectness = %f, thresh = %f, i = %d, n = %d \n", objectness, thresh, i, n);
                 int box_index = entry_index(l, 0, n * l.w * l.h + i, 0);  // x坐标索引值
                 dets[count].bbox = get_yolo_box(predictions, l.biases, l.mask[n], box_index, col, row, l.w, l.h, netw,
                                                 neth, l.w * l.h);
@@ -962,7 +957,7 @@ get_yolo_detections(layer l, int w, int h, int netw, int neth, float thresh, int
                 {
                     int class_index = entry_index(l, 0, n * l.w * l.h + i, 4 + 1 + j);
                     float prob = objectness * predictions[class_index];
-                    dets[count].prob[j] = (prob > thresh) ? prob : 0;
+                    dets[count].prob[j] = (prob > thresh) ? prob : 0;  // 这里对每个类别的概率进行了修改更新
                 }
                 ++count;
             }

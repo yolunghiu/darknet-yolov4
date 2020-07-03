@@ -143,10 +143,18 @@ image get_label(image **characters, char *string, int size)
     return b;
 }
 
+// 输入类别名，拼接出对应的类别名图片
 image get_label_v3(image **characters, char *string, int size)
 {
+    /*
+     * @param characters: alphabets，图片位于data/labels文件夹下，命名规则是ASCII_size
+     * @param string: labelstr
+     * @param size: im.h * .03
+     * */
+    // 根据图片大小确定标签显示的大小
     size = size / 10;
     if (size > 7) size = 7;
+
     image label = make_empty_image(0, 0, 0);
     while (*string)
     {
@@ -161,6 +169,7 @@ image get_label_v3(image **characters, char *string, int size)
     return b;
 }
 
+// 把label图片绘制到原图中
 void draw_label(image a, int r, int c, image label, const float *rgb)
 {
     int w = label.w;
@@ -217,10 +226,13 @@ void draw_box_width_bw(image a, int x1, int y1, int x2, int y2, int w, float bri
     }
 }
 
+// 在图像上绘制矩形框
 void draw_box(image a, int x1, int y1, int x2, int y2, float r, float g, float b)
 {
     //normalize_image(a);
     int i;
+
+    // 检查坐标是否越界
     if (x1 < 0) x1 = 0;
     if (x1 >= a.w) x1 = a.w - 1;
     if (x2 < 0) x2 = 0;
@@ -231,6 +243,7 @@ void draw_box(image a, int x1, int y1, int x2, int y2, float r, float g, float b
     if (y2 < 0) y2 = 0;
     if (y2 >= a.h) y2 = a.h - 1;
 
+    // 将图像中待绘制矩形框位置的像素颜色改成指定颜色
     for (i = x1; i <= x2; ++i)
     {
         a.data[i + y1 * a.w + 0 * a.w * a.h] = r;
@@ -257,8 +270,12 @@ void draw_box(image a, int x1, int y1, int x2, int y2, float r, float g, float b
 
 void draw_box_width(image a, int x1, int y1, int x2, int y2, int w, float r, float g, float b)
 {
+    /*
+     * image, left, top, right, bottom, im.h*.006, r,g,b
+     * */
+
     int i;
-    for (i = 0; i < w; ++i)
+    for (i = 0; i < w; ++i)  // 根据图片尺寸调整绘制的box线条宽度
     {
         draw_box(a, x1 + i, y1 + i, x2 - i, y2 - i, r, g, b);
     }
@@ -299,16 +316,17 @@ image **load_alphabet()
     return alphabets;
 }
 
-
 // Creates array of detections with prob > thresh and fills best_class for them
+// 对dets中的box进行包装，添加一个best_class属性
 detection_with_class *
 get_actual_detections(detection *dets, int dets_num, float thresh, int *selected_detections_num, char **names)
 {
     int selected_num = 0;
     detection_with_class *result_arr = (detection_with_class *) xcalloc(dets_num, sizeof(detection_with_class));
     int i;
-    for (i = 0; i < dets_num; ++i)
+    for (i = 0; i < dets_num; ++i)  // 遍历所有检测到的box
     {
+        // 找到best_class以及此类别对应的prob
         int best_class = -1;
         float best_class_prob = thresh;
         int j;
@@ -321,6 +339,7 @@ get_actual_detections(detection *dets, int dets_num, float thresh, int *selected
                 best_class_prob = dets[i].prob[j];
             }
         }
+
         if (best_class >= 0)
         {
             result_arr[selected_num].det = dets[i];
@@ -339,6 +358,8 @@ int compare_by_lefts(const void *a_ptr, const void *b_ptr)
     const detection_with_class *a = (detection_with_class *) a_ptr;
     const detection_with_class *b = (detection_with_class *) b_ptr;
     const float delta = (a->det.bbox.x - a->det.bbox.w / 2) - (b->det.bbox.x - b->det.bbox.w / 2);
+
+    // 从小到大排序
     return delta < 0 ? -1 : delta > 0 ? 1 : 0;
 }
 
@@ -348,6 +369,8 @@ int compare_by_probs(const void *a_ptr, const void *b_ptr)
     const detection_with_class *a = (detection_with_class *) a_ptr;
     const detection_with_class *b = (detection_with_class *) b_ptr;
     float delta = a->det.prob[a->best_class] - b->det.prob[b->best_class];
+
+    // 从小到大排序
     return delta < 0 ? -1 : delta > 0 ? 1 : 0;
 }
 
@@ -355,6 +378,17 @@ int compare_by_probs(const void *a_ptr, const void *b_ptr)
 void draw_detections_v3(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes,
                         int ext_output)
 {
+    /*
+     * @param im: 当前测试图片
+     * @param dets: 后处理之后的检测结果
+     * @param num: dets中box的数量
+     * @param thresh: 0.25缺省值，confidence>thresh的box被保留
+     * @param names: 标签名
+     * @param alphabet
+     * @param classes: voc 20
+     * @param ext_output: -ext_output
+     * */
+
     static int frame_id = 0;
     frame_id++;
 
@@ -363,26 +397,30 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
             get_actual_detections(dets, num, thresh, &selected_detections_num, names);
 
     // text output
+    // 按box左上角坐标由小到大排序
     qsort(selected_detections, selected_detections_num, sizeof(*selected_detections), compare_by_lefts);
     int i;
-    for (i = 0; i < selected_detections_num; ++i)
+    for (i = 0; i < selected_detections_num; ++i)  // 遍历所有box
     {
+        // 打印box信息
         const int best_class = selected_detections[i].best_class;
         printf("%s: %.0f%%", names[best_class], selected_detections[i].det.prob[best_class] * 100);
         if (ext_output)
-            printf("\t(left_x: %4.0f   top_y: %4.0f   width: %4.0f   height: %4.0f)\n",
+            printf("\t(left_x: %4.0f   top_y: %4.0f   width: %4.0f   height: %4.0f   img_width: %d   img_height: %d)\n",
                    round((selected_detections[i].det.bbox.x - selected_detections[i].det.bbox.w / 2) * im.w),
                    round((selected_detections[i].det.bbox.y - selected_detections[i].det.bbox.h / 2) * im.h),
-                   round(selected_detections[i].det.bbox.w * im.w), round(selected_detections[i].det.bbox.h * im.h));
+                   round(selected_detections[i].det.bbox.w * im.w), round(selected_detections[i].det.bbox.h * im.h),
+                   im.w, im.h);
         else
             printf("\n");
+
         int j;
-        for (j = 0; j < classes; ++j)
+        for (j = 0; j < classes; ++j)  // 遍历当前box各个类别的置信度
         {
+            // 如果某个类别的置信度大于阈值，但该类别不是best_class，仍然打印这个box的信息
             if (selected_detections[i].det.prob[j] > thresh && j != best_class)
             {
                 printf("%s: %.0f%%", names[j], selected_detections[i].det.prob[j] * 100);
-
                 if (ext_output)
                     printf("\t(left_x: %4.0f   top_y: %4.0f   width: %4.0f   height: %4.0f)\n",
                            round((selected_detections[i].det.bbox.x - selected_detections[i].det.bbox.w / 2) * im.w),
@@ -399,6 +437,7 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
     qsort(selected_detections, selected_detections_num, sizeof(*selected_detections), compare_by_probs);
     for (i = 0; i < selected_detections_num; ++i)
     {
+        // 根据图片尺寸调整绘制的box线条宽度
         int width = im.h * .006;
         if (width < 1)
             width = 1;
@@ -425,6 +464,7 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
         if (top < 0) top = 0;
         if (bot > im.h - 1) bot = im.h - 1;
 
+        // 画出矩形框
         if (im.c == 1)
         {
             draw_box_width_bw(im, left, top, right, bot, width, 0.8);    // 1 channel Black-White
@@ -432,10 +472,14 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
         {
             draw_box_width(im, left, top, right, bot, width, red, green, blue); // 3 channels RGB
         }
+
         if (alphabet)
         {
+            // 这里拿到当前box置信度最高的类别名
             char labelstr[4096] = {0};
             strcat(labelstr, names[selected_detections[i].best_class]);
+
+            // 如果有多个类别置信度都大于阈值，将这些类别名附加在labelstr后面，以逗号分隔
             int j;
             for (j = 0; j < classes; ++j)
             {
@@ -449,6 +493,7 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
             draw_label(im, top + width, left, label, rgb);
             free_image(label);
         }
+
         if (selected_detections[i].det.mask)
         {
             image mask = float_to_image(14, 14, 1, selected_detections[i].det.mask);
@@ -1581,7 +1626,8 @@ void test_resize(char *filename)
     show_image(c4, "C4");
 
 #ifdef OPENCV
-    while(1){
+    while (1)
+    {
         image aug = random_augment_image(im, 0, .75, 320, 448, 320);
         show_image(aug, "aug");
         free_image(aug);

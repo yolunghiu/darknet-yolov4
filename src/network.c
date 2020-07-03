@@ -1001,33 +1001,40 @@ void free_batch_detections(det_num_pair *det_num_pairs, int n)
 // 将检测结果转换成json格式
 char *detection_to_json(detection *dets, int nboxes, int classes, char **names, long long int frame_id, char *filename)
 {
+    /*
+     * @param dets: 过滤后的检测结果
+     * @param nboxes: box数量
+     * @param classes: 类别数
+     * @param names: 类别名
+     * @param frame_id: 当前测试图片的索引值
+     * @param filename: 当前测试图片的路径
+     * */
+
     const float thresh = 0.005; // function get_network_boxes() has already filtered dets by actual threshold(0.24)
 
     char *send_buf = (char *) calloc(1024, sizeof(char));
     if (!send_buf) return 0;
-    if (filename)
+    if (filename)  // 指定文件名时，将文件名写入json
     {
         sprintf(send_buf, "{\n \"frame_id\":%lld, \n \"filename\":\"%s\", \n \"objects\": [ \n", frame_id, filename);
-    } else
+    } else  // 未指定，只写入frame_id
     {
         sprintf(send_buf, "{\n \"frame_id\":%lld, \n \"objects\": [ \n", frame_id);
     }
 
     int i, j;
     int class_id = -1;
-    for (i = 0; i < nboxes; ++i)
+    for (i = 0; i < nboxes; ++i)  // 遍历所有box
     {
-        for (j = 0; j < classes; ++j)
+        for (j = 0; j < classes; ++j)  // 遍历所有类别(voc 20类)
         {
             int show = strncmp(names[j], "dont_show", 9);
             if (dets[i].prob[j] > thresh && show)
-            {
+            {  // nms时如果box被抑制掉，prob[j]==0, get_yolo_detections()函数中也能保证prob>thresh
                 if (class_id != -1) strcat(send_buf, ", \n");
                 class_id = j;
                 char *buf = (char *) calloc(2048, sizeof(char));
                 if (!buf) return 0;
-                //sprintf(buf, "{\"image_id\":%d, \"category_id\":%d, \"bbox\":[%f, %f, %f, %f], \"score\":%f}",
-                //    image_id, j, dets[i].bbox.x, dets[i].bbox.y, dets[i].bbox.w, dets[i].bbox.h, dets[i].prob[j]);
 
                 sprintf(buf,
                         "  {\"class_id\":%d, \"name\":\"%s\", \"relative_coordinates\":{\"center_x\":%f, \"center_y\":%f, \"width\":%f, \"height\":%f}, \"confidence\":%f}",
