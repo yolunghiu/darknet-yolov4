@@ -1029,7 +1029,7 @@ char *detection_to_json(detection *dets, int nboxes, int classes, char **names, 
         for (j = 0; j < classes; ++j)  // 遍历所有类别(voc 20类)
         {
             int show = strncmp(names[j], "dont_show", 9);
-            if (dets[i].prob[j] > thresh && show)
+            if (dets[i].prob[j] > thresh && show)  // 这里的prob>thresh只是为了判断prob是否大于0（浮点数不是严格==0）
             {  // nms时如果box被抑制掉，prob[j]==0, get_yolo_detections()函数中也能保证prob>thresh
                 if (class_id != -1) strcat(send_buf, ", \n");
                 class_id = j;

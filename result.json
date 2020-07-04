@@ -1,8 +1,8 @@
 [
 {
  "frame_id":1, 
- "filename":"data/person.jpg", 
+ "filename":"data/dog.jpg", 
  "objects": [ 
-  {"class_id":17, "name":"horse", "relative_coordinates":{"center_x":0.787013, "center_y":0.571579, "width":0.305597, "height":0.481827}, "confidence":0.983843}, 
-  {"class_id":16, "name":"dog", "relative_coordinates":{"center_x":0.207784, "center_y":0.720460, "width":0.221507, "height":0.189764}, "confidence":0.994295}, 
-  {"class_id":0, "name":"person", "relative_coordinates":{"center_x":0.364249, "center_y":0.562924, "width":0.122506, "he
+  {"class_id":58, "name":"pottedplant", "relative_coordinates":{"center_x":0.910581, "center_y":0.228973, "width":0.047570, "height":0.078901}, "confidence":0.330722}, 
+  {"class_id":16, "name":"dog", "relative_coordinates":{"center_x":0.287745, "center_y":0.665292, "width":0.240127, "height":0.549495}, "confidence":0.978751}, 
+  {"class_id":7, "name":"truck", "relative_coordinates":{"center_x":0.747735, "center_y":0.213973, "width":0.287336, "

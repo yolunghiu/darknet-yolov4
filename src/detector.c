@@ -1832,6 +1832,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         }
 
         // pseudo labeling concept - fast.ai
+        // 将检测结果保存成训练集中标注的格式，用于扩充训练集
         if (save_labels)
         {
             char labelpath[4096];
@@ -2101,7 +2102,7 @@ void run_detector(int argc, char **argv)
     // extended output in test mode (output of rect bound coords)
     // and for recall mode (extended output table-like format with results for best_class fit)
     int ext_output = find_arg(argc, argv, "-ext_output");  // 测试阶段绘制检测结果时，是否输出坐标信息
-    int save_labels = find_arg(argc, argv, "-save_labels");
+    int save_labels = find_arg(argc, argv, "-save_labels");  // 将检测结果保存成训练集中标注的格式，用于扩充训练集
     char *chart_path = find_char_arg(argc, argv, "-chart", 0);
     if (argc < 4)
     {
