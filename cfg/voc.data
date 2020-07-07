@@ -1,6 +1,6 @@
 classes= 20
-train  = /home/liuhy/datasets/VOCdevkit/train.txt
-valid  = /home/liuhy/datasets/VOCdevkit/2007_test_test.txt
-names = /home/liuhy/res/deep-learning/04.目标检测/darknet-yolov4/data/voc.names
-backup = /home/liuhy/res/deep-learning/04.目标检测/darknet-yolov4/backup
+train  = /home/ark/datasets/VOCdevkit/train.txt
+valid  = /home/ark/datasets/VOCdevkit/2007_test_test.txt
+names = data/voc.names
+backup = /home/ark/res/darknet/backup
 
