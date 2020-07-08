@@ -40,7 +40,6 @@ typedef enum
 } UNUSED_ENUM_TYPE;
 
 #ifdef GPU
-
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <cublas_v2.h>
@@ -988,23 +987,6 @@ typedef struct box_label
     float left, right, top, bottom;
 } box_label;
 
-// list.h
-//typedef struct node {
-//    void *val;
-//    struct node *next;
-//    struct node *prev;
-//} node;
-
-// list.h
-//typedef struct list {
-//    int size;
-//    node *front;
-//    node *back;
-//} list;
-
-// -----------------------------------------------------
-
-
 // parser.c
 LIB_API network *load_network(char *cfg, char *weights, int clear);
 
@@ -1031,6 +1013,9 @@ LIB_API float *network_predict_ptr(network *net, float *input);
 
 LIB_API detection *
 get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter);
+
+// 将检测结果转换为定位结果
+LIB_API detection *get_localization_box(detection *dets, int total, float thresh);
 
 LIB_API det_num_pair *
 network_predict_batch(network *net, image im, int batch_size, int w, int h, float thresh, float hier, int *map,

@@ -1809,7 +1809,12 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             else diounms_sort(dets, nboxes, l.classes, nms, l.nms_kind, l.beta_nms);
         }
 
-        draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, ext_output);
+        // dets里保存的是经过后处理之后所有检测结果，定位任务只需要面积最大的那个box，需要对dets再次过滤
+        detection* det = get_localization_box(dets, nboxes, thresh);
+        draw_detections_v3(im, det, 1, thresh, names, alphabet, l.classes, ext_output);
+
+        // 若要可视化所有检测结果，注释上两行，使用下面这行
+        // draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, ext_output);
         save_image(im, "predictions");
         if (!dont_show)
         {

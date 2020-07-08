@@ -969,6 +969,39 @@ get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map
     return dets;
 }
 
+// 将检测结果转换为定位结果
+detection *get_localization_box(detection *dets, int total, float thresh)
+{
+    detection *res = NULL;
+
+    float max_area = 0.0f;
+    int i;
+    for (i = 0; i < total; i++)
+    {
+        // 首先要确保被保留下来的定位结果的prob>thresh，这一步或许是非必须的，因为获取dets已经使用这个条件进行了一遍过滤
+        float *prob = dets[i].prob;
+        float max_prob = 0.0f;
+        int j;
+        for (j = 0; j < dets[i].classes; j++)
+        {
+            max_prob = dets[i].prob[j] > max_prob ? dets[i].prob[j] : max_prob;
+        }
+        if (max_prob < thresh)
+            continue;
+
+        // 概率符合条件之后，再根据面积进行过滤，找到面积最大的那个检测结果
+        box cur_box = dets[i].bbox;
+        float cur_area = cur_box.w * cur_box.h;
+        if (cur_area > max_area)
+        {
+            res = &dets[i];
+            max_area = cur_area;
+        }
+    }
+
+    return res;
+}
+
 void free_detections(detection *dets, int n)
 {
     int i;

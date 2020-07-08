@@ -4,5 +4,5 @@
  "filename":"data/dog.jpg", 
  "objects": [ 
   {"class_id":58, "name":"pottedplant", "relative_coordinates":{"center_x":0.910581, "center_y":0.228973, "width":0.047570, "height":0.078901}, "confidence":0.330722}, 
-  {"class_id":16, "name":"dog", "relative_coordinates":{"center_x":0.287745, "center_y":0.665292, "width":0.240127, "height":0.549495}, "confidence":0.978751}, 
+  {"class_id":16, "name":"dog", "relative_coordinates":{"center_x":0.288875, "center_y":0.665885, "width":0.239873, "height":0.547173}, "confidence":0.957634}, 
   {"class_id":7, "name":"truck", "relative_coordinates":{"center_x":0.747735, "center_y":0.213973, "width":0.287336, "
