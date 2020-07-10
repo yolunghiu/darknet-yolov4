@@ -23,4 +23,5 @@
 ## yolov4相关信息
 
 1. backbone: CSPNet的设计思想 + Residual block，v4-tiny中对[route]层进行了增强，对特征图进行分组输出
-2. spp:
+2. spp: yolov4中包含3个检测分支，spp模块输出的特征图分别融入了这3个分支
+3. PAN: 借鉴了思想？
