@@ -60,3 +60,4 @@ yolov4.conv.137
 build-release/
 yolov3-tiny.conv.11
 yolov4-tiny.conv.29
+*.mp4

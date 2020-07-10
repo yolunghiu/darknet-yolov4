@@ -1,5 +1,9 @@
 # darknet
 
+## TODO
+1. CSPNet
+2. SPPNet
+
 ## 测试阶段相关问题
 
 ### 检测框的获取流程
@@ -16,4 +20,7 @@
     2. 依次遍历box的每个类别，若类别的prob大于0，则输出这个box
     3. 一个box可能被输出多次，因为多个类别的prob有可能都满足条件
 
-    
+## yolov4相关信息
+
+1. backbone: CSPNet的设计思想 + Residual block，v4-tiny中对[route]层进行了增强，对特征图进行分组输出
+2. spp:
