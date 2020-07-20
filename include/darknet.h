@@ -272,7 +272,7 @@ struct layer
     int truths;
     int h, w, c;
     int out_h, out_w, out_c;
-    int n;  // yolo层的n指的是不同尺寸anchor的数量
+    int n;  // yolo层的n指的是不同尺寸anchor的数量, 卷积层指的是卷积核数量
     int max_boxes;
     int groups;
     int group_id;

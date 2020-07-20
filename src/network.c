@@ -1336,6 +1336,8 @@ static float lrelu(float src)
     return eps;
 }
 
+// https://learnml.today/speeding-up-model-with-fusing-batch-normalization-and-convolution-3
+// 文中将conv-bn转化成了矩阵乘法，对照这个转化即为下面的实现，darknet中weights存储成一个一维数组，数值转换是逐个值进行的（不像python的矩阵运算）
 void fuse_conv_batchnorm(network net)
 {
     int j;
@@ -1355,17 +1357,19 @@ void fuse_conv_batchnorm(network net)
             if (l->batch_normalize)
             {
                 int f;
-                for (f = 0; f < l->n; ++f)
+                for (f = 0; f < l->n; ++f)  // 遍历当前卷积层的f个卷积核
                 {
+                    // b = W_BN·b_conv + b_BN, darknet中如果卷积层使用了BN则没有bias, 因此b=b_BN
                     l->biases[f] = l->biases[f] - (double) l->scales[f] * l->rolling_mean[f] /
                                                   (sqrt((double) l->rolling_variance[f] + .00001));
 
                     const size_t filter_size = l->size * l->size * l->c / l->groups;
                     int i;
-                    for (i = 0; i < filter_size; ++i)
+                    for (i = 0; i < filter_size; ++i)  // 对当前卷积核上的每个值逐个处理
                     {
-                        int w_index = f * filter_size + i;
+                        int w_index = f * filter_size + i;  // 当前卷积核第i个cell的索引值
 
+                        // W = W_BN·W_conv
                         l->weights[w_index] = (double) l->weights[w_index] * l->scales[f] /
                                               (sqrt((double) l->rolling_variance[f] + .00001));
                     }
