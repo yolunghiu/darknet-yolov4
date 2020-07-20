@@ -25,7 +25,7 @@ layer make_shortcut_layer(int batch, int n, int *input_layers, int* input_sizes,
     l.input_sizes = input_sizes;
     l.layers_output = layers_output;
     l.layers_delta = layers_delta;
-    l.weights_type = weights_type;
+    l.weights_type = weights_type;  // no weights
     l.weights_normalizion = weights_normalizion;
     l.learning_rate_scale = 1;  // not necessary
 

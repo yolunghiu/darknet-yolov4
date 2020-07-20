@@ -905,7 +905,7 @@ layer parse_shortcut(list *options, size_params params, network net)
     ACTIVATION activation = get_activation(activation_s);
 
     char *weights_type_str = option_find_str_quiet(options, "weights_type", "none");
-    WEIGHTS_TYPE_T weights_type = NO_WEIGHTS;
+    WEIGHTS_TYPE_T weights_type = NO_WEIGHTS;  // no weights
     if (strcmp(weights_type_str, "per_feature") == 0 || strcmp(weights_type_str, "per_layer") == 0)
         weights_type = PER_FEATURE;
     else if (strcmp(weights_type_str, "per_channel") == 0) weights_type = PER_CHANNEL;
@@ -1847,6 +1847,8 @@ void save_shortcut_weights(layer l, FILE *fp)
     fwrite(l.weights, sizeof(float), num, fp);
 }
 
+// 保存当前卷积层的参数，如果没有使用BN，先保存conv_bias再保存conv_weights
+// 如果使用了BN，这时卷积层没有bias，依次保存bn_bias、bn_scale、bn_running_mean、bn_running_var、conv_weights
 void save_convolutional_weights(layer l, FILE *fp)
 {
     if (l.binary)
@@ -1916,6 +1918,7 @@ void save_weights_upto(network net, char *filename, int cutoff)
     FILE *fp = fopen(filename, "wb");
     if (!fp) file_error(filename);
 
+    // 前20个字节存储4个整数，4x3+8x1
     int major = MAJOR_VERSION;
     int minor = MINOR_VERSION;
     int revision = PATCH_VERSION;
@@ -1934,7 +1937,7 @@ void save_weights_upto(network net, char *filename, int cutoff)
         {
             save_convolutional_weights(l, fp);
         }
-        if (l.type == SHORTCUT && l.nweights > 0)
+        if (l.type == SHORTCUT && l.nweights > 0)  // shortcut的nweights=0
         {
             save_shortcut_weights(l, fp);
         }
