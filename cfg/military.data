@@ -1,0 +1,6 @@
+classes= 9
+train  = data/train_military.txt
+valid  = data/test_military.txt
+names = data/military.names
+backup = backup/
+

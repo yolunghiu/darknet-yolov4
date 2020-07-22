@@ -1383,7 +1383,7 @@ void fuse_conv_batchnorm(network net)
                 }
 #endif
             }
-        } else if (l->type == SHORTCUT && l->weights && l->weights_normalizion)
+        } else if (l->type == SHORTCUT && l->weights && l->weights_normalizion)  // 目前没遇到过shortcut的weights不是空的情况
         {
             if (l->nweights > 0)
             {
